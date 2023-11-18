@@ -3,7 +3,7 @@ import { useState } from 'react';
 
 const Flight: React.FC = () => {
 
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState('Flight');
 
   return (
     <IonPage>
