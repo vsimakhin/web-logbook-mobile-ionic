@@ -1,4 +1,4 @@
-import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar, useIonViewDidEnter } from '@ionic/react';
+import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonTitle, IonToolbar, useIonRouter, useIonViewDidEnter } from '@ionic/react';
 
 import { useState } from 'react';
 import { DBModel } from '../modules/db/DBModel';
@@ -7,6 +7,8 @@ import { Toast } from '@capacitor/toast';
 
 import DataTable, { TableColumn } from 'react-data-table-component';
 import useWindowDimensions from '../modules/helpers/WindowDimensions';
+import { useHistory } from 'react-router';
+import { add, airplane } from 'ionicons/icons';
 
 const FlightRecords: React.FC = () => {
 
@@ -40,8 +42,12 @@ const FlightRecords: React.FC = () => {
     return Math.round((height - (headerSize + footerSize)) / 32)
   }
 
-  const onRowClicked = async (row: FlightRecord, event: React.MouseEvent<Element, MouseEvent>) => {
+  const paginationComponentOptions = { noRowsPerPage: true };
 
+  const history = useHistory();
+
+  const onRowClicked = async (row: FlightRecord, event: React.MouseEvent<Element, MouseEvent>) => {
+    history.push('/flight', { fr: row });
   }
 
   const columns: TableColumn<FlightRecord>[] = [
@@ -49,8 +55,8 @@ const FlightRecords: React.FC = () => {
     { name: 'Date', selector: row => row.date, width: '100px' },
     { name: 'Departure', selector: row => row.departure_place, compact: true, width: '60px' },
     { name: 'Arrival', selector: row => row.arrival_place, compact: true, width: '60px' },
-    { name: 'Aircraft', selector: row => row.reg_name + " " + row.aircraft_model, compact: true },
-    { name: 'TT', selector: row => row.total_time, compact: true, width: '40px', },
+    { name: 'Aircraft', selector: row => row.reg_name && row.reg_name + " " + row.aircraft_model || row.sim_type, compact: true },
+    { name: 'TT', selector: row => row.total_time && row.total_time || row.sim_time, compact: true, width: '40px', },
     { name: 'PIC Name', selector: row => row.pic_name, compact: true, omit: omitColumn() },
     { name: 'Day', selector: row => row.day_landings, compact: true, width: '40px', omit: omitColumn() },
     { name: 'Night', selector: row => row.night_landings, compact: true, width: '30px', omit: omitColumn() },
@@ -66,16 +72,16 @@ const FlightRecords: React.FC = () => {
       <IonHeader>
         <IonToolbar>
           <IonTitle>Flight Records</IonTitle>
+          <IonButtons slot="secondary">
+            <IonButton>
+              <IonIcon slot="icon-only" icon={add}></IonIcon>
+            </IonButton>
+          </IonButtons>
         </IonToolbar>
       </IonHeader>
       <IonContent fullscreen>
-        <IonHeader collapse="condense">
-          <IonToolbar>
-            <IonTitle size="large">Flight Records</IonTitle>
-          </IonToolbar>
-        </IonHeader>
         <DataTable columns={columns} data={flightRecords} pagination responsive={true} striped={true} dense={true}
-          paginationPerPage={getRowsPerPage()} paginationRowsPerPageOptions={[getRowsPerPage(), getRowsPerPage() * 2]}
+          paginationPerPage={getRowsPerPage()} paginationComponentOptions={paginationComponentOptions}
           onRowClicked={onRowClicked} highlightOnHover={true}
         />
       </IonContent>

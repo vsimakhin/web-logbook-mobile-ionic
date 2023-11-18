@@ -32,9 +32,12 @@ import '@ionic/react/css/display.css';
 
 /* Theme variables */
 import './theme/variables.css';
+
+/* Pages */
 import FlightRecords from './app/pages/FlightRecords';
 import Stats from './app/pages/Stats';
 import Settings from './app/pages/Settings';
+import Flight from './app/pages/Flight';
 
 setupIonicReact();
 
@@ -61,7 +64,11 @@ const App: React.FC = () => {
             <Route exact path="/">
               <Redirect to="/flightrecords" />
             </Route>
+            <Route exact path="/flight">
+              <Flight />
+            </Route>
           </IonRouterOutlet>
+
           <IonTabBar slot="bottom">
             <IonTabButton tab="flightrecords" href="/flightrecords">
               <IonIcon aria-hidden="true" icon={airplane} />

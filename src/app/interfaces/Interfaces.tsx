@@ -34,6 +34,39 @@ export interface FlightRecord {
     m_date?: string;
 }
 
+export function emptyFlightRecord(): FlightRecord {
+    let fr: FlightRecord = {
+        uuid: '',
+        aircraft_model: '',
+        arrival_place: '',
+        arrival_time: '',
+        co_pilot_time: '',
+        date: '',
+        day_landings: 0,
+        departure_place: '',
+        departure_time: '',
+        dual_time: '',
+        ifr_time: '',
+        instructor_time: '',
+        mcc_time: '',
+        me_time: '',
+        night_landings: 0,
+        night_time: '',
+        pic_name: '',
+        pic_time: '',
+        reg_name: '',
+        remarks: '',
+        se_time: '',
+        sim_time: '',
+        sim_type: '',
+        total_time: '',
+        update_time: 0,
+        m_date: '',
+    };
+
+    return fr;
+}
+
 export interface DeletedItem {
     uuid: string;
     table_name?: string;
