@@ -1,19 +1,37 @@
-import { IonBackButton, IonButton, IonButtons, IonCol, IonContent, IonDatetime, IonGrid, IonHeader, IonIcon, IonInput, IonItem, IonItemDivider, IonItemGroup, IonList, IonPage, IonRow, IonTitle, IonToolbar, useIonViewDidEnter } from '@ionic/react';
-import { useState } from 'react';
+import { IonBackButton, IonButton, IonButtons, IonCol, IonContent, IonGrid, IonHeader, IonIcon, IonInput, IonItem, IonItemDivider, IonItemGroup, IonList, IonPage, IonRow, IonTitle, IonToolbar, useIonViewDidEnter, useIonViewWillEnter } from '@ionic/react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router';
 import { FlightRecord, emptyFlightRecord } from '../interfaces/Interfaces';
 import { checkmark, close } from 'ionicons/icons';
 
 
 const Flight: React.FC = () => {
-  let fr: FlightRecord = emptyFlightRecord();
+  // let fr: FlightRecord = emptyFlightRecord();
 
   const location = useLocation();
+  const [fr, setFlightRecord] = useState<FlightRecord>(emptyFlightRecord);
 
-  const state = location.state as { fr: FlightRecord };
-  if (state !== undefined) {
-    fr = state.fr;
-  }
+  useEffect(() => {
+    console.log(location)
+    const state = location.state as { fr: FlightRecord };
+    if (state !== undefined) {
+      setFlightRecord(state.fr);
+      console.log(state)
+    }
+  }, [location.state])
+
+  // useIonViewDidEnter(() => {
+  //   const state = location.state as { fr: FlightRecord };
+  //   if (state !== undefined) {
+  //     setFlightRecord(state.fr);
+  //   }
+  // });
+
+  // const state = location.state as { fr: FlightRecord };
+  // if (state !== undefined) {
+  //   fr = state.fr;
+  //   console.log(state)
+  // }
 
   const getTitle = (fr: FlightRecord): string => {
     if (fr.departure_place !== "" && fr.arrival_place !== "") {
@@ -29,6 +47,8 @@ const Flight: React.FC = () => {
     }
   }
 
+
+
   const [title, setTitle] = useState(getTitle(fr));
 
   return (
@@ -39,8 +59,8 @@ const Flight: React.FC = () => {
             <IonBackButton defaultHref="#"></IonBackButton>
           </IonButtons>
           <IonButtons slot="secondary">
-            <IonButton>
-              <IonIcon slot="icon-only" icon={checkmark}></IonIcon>
+            <IonButton >
+              <IonIcon slot="icon-only" icon={checkmark} onClick={(e) => { fr.se_time = fr.total_time; setFlightRecord(fr) }}></IonIcon>
             </IonButton>
             <IonButton>
               <IonIcon slot="icon-only" icon={close}></IonIcon>
