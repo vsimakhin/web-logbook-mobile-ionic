@@ -1,3 +1,5 @@
+export const NEW_FLIGHTRECORD = "NEW_FLIGHTRECORD"
+
 export interface AppSettings {
     url: string;
     user: string;

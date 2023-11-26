@@ -1,7 +1,5 @@
 import { AppSettings, Convert } from '../../interfaces/Interfaces';
-
 import { Toast } from '@capacitor/toast';
-
 import { DBModel } from '../db/DBModel';
 
 export class Sync {
@@ -45,7 +43,11 @@ export class Sync {
     public async updateFlightRecords() {
         const db = new DBModel();
         await db.initDBConnection();
+
         const frs = await this.get(this.getURL(this.SYNC_FLIGHT_RECORDS));
+        if (frs === null) {
+            return
+        }
 
         let err: Error;
         let errorsCounter = 0;
@@ -81,14 +83,15 @@ export class Sync {
 
         // get deleted items from the main app
         let dis = await this.get(this.getURL(this.SYNC_DELETED));
+        if (dis !== null) {
+            for (let i = 0; i < dis.length; i++) {
+                const di = Convert.toDeletedItem(JSON.stringify(dis[i]));
 
-        for (let i = 0; i < dis.length; i++) {
-            const di = Convert.toDeletedItem(JSON.stringify(dis[i]));
-
-            const res = await db.syncDeletedItems(di);
-            if (res instanceof Error) {
-                errorsCounter += 1;
-                err = res;
+                const res = await db.syncDeletedItems(di);
+                if (res instanceof Error) {
+                    errorsCounter += 1;
+                    err = res;
+                }
             }
         }
 

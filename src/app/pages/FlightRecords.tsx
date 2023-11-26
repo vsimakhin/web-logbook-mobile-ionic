@@ -1,14 +1,12 @@
 import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonTitle, IonToolbar, useIonRouter, useIonViewDidEnter } from '@ionic/react';
-
 import { useState } from 'react';
 import { DBModel } from '../modules/db/DBModel';
-import { FlightRecord } from '../interfaces/Interfaces';
+import { FlightRecord, NEW_FLIGHTRECORD, emptyFlightRecord } from '../interfaces/Interfaces';
 import { Toast } from '@capacitor/toast';
-
 import DataTable, { TableColumn } from 'react-data-table-component';
 import useWindowDimensions from '../modules/helpers/WindowDimensions';
 import { useHistory } from 'react-router';
-import { add, airplane } from 'ionicons/icons';
+import { add } from 'ionicons/icons';
 
 const FlightRecords: React.FC = () => {
 
@@ -50,6 +48,12 @@ const FlightRecords: React.FC = () => {
     history.push('/flight', { fr: row });
   }
 
+  const onNewClicked = async () => {
+    let fr = emptyFlightRecord();
+    fr.uuid = NEW_FLIGHTRECORD;
+    history.push('/flight', { fr: fr });
+  }
+
   const columns: TableColumn<FlightRecord>[] = [
     { name: 'uuid', selector: row => row.uuid, omit: true, },
     { name: 'Date', selector: row => row.date, width: '100px' },
@@ -73,7 +77,7 @@ const FlightRecords: React.FC = () => {
         <IonToolbar>
           <IonTitle>Flight Records</IonTitle>
           <IonButtons slot="secondary">
-            <IonButton>
+            <IonButton onClick={onNewClicked}>
               <IonIcon slot="icon-only" icon={add}></IonIcon>
             </IonButton>
           </IonButtons>
