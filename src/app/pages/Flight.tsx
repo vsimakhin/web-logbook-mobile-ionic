@@ -1,20 +1,31 @@
 import {
+  IonAlert,
   IonBackButton, IonButton, IonButtons, IonCol, IonContent, IonGrid, IonHeader, IonIcon, IonInput, IonItem,
   IonPage, IonRow, IonTitle, IonToolbar
 } from '@ionic/react';
 import { useEffect, useState } from 'react';
-import { useLocation } from 'react-router';
+import { useHistory, useLocation } from 'react-router';
 import { FlightRecord, NEW_FLIGHTRECORD, emptyFlightRecord } from '../interfaces/Interfaces';
 import { checkmark, close } from 'ionicons/icons';
 import { DBModel } from '../modules/db/DBModel';
 import { Toast } from '@capacitor/toast';
 import { v4 as uuidv4 } from 'uuid';
+import { getTimestamp } from '../modules/helpers/Helpers';
 
 const Flight: React.FC = () => {
+
+  const history = useHistory();
 
   const location = useLocation();
   const [fr, setFlightRecord] = useState<FlightRecord>(emptyFlightRecord);
 
+
+  /**
+   * Returns the title for a flight record.
+   * 
+   * @param fr - The flight record.
+   * @returns The title string.
+   */
   const getTitle = (fr: FlightRecord): string => {
     if (fr.departure_place !== "" && fr.arrival_place !== "") {
       return `${fr.departure_place} - ${fr.arrival_place}`;
@@ -39,7 +50,13 @@ const Flight: React.FC = () => {
     }
   }, [location.state])
 
-  const saveFlightRecord = async () => {
+  /**
+   * Saves the flight record to the database.
+   * If the flight record is a new record, it creates a new entry in the database.
+   * If the flight record already exists, it updates the existing entry in the database.
+   * @returns {Promise<void>} A promise that resolves when the operation is complete.
+   */
+  const saveFlightRecord = async (): Promise<void> => {
     const db = new DBModel();
     await db.initDBConnection();
 
@@ -56,7 +73,8 @@ const Flight: React.FC = () => {
       }
     } else {
 
-      const res = await db.updateFlightRecords(fr);
+      fr.update_time = getTimestamp();
+      const res = await db.updateFlightRecord(fr);
       if (res instanceof Error) {
         await Toast.show({ text: `Cannot update flight record ${res.message}` });
       } else {
@@ -65,8 +83,20 @@ const Flight: React.FC = () => {
     }
   }
 
-  const deleteFlightRecord = async () => {
+  /**
+   * Deletes a flight record from the database.
+   * @returns {Promise<void>} A promise that resolves when the flight record is deleted successfully.
+   */
+  const deleteFlightRecord = async (): Promise<void> => {
+    const db = new DBModel();
+    await db.initDBConnection();
 
+    const res = await db.deleteFlightRecord(fr.uuid);
+    if (res instanceof Error) {
+      await Toast.show({ text: `Cannot delete flight record ${res.message}` });
+    } else {
+      history.goBack();
+    }
   }
 
   return (
@@ -81,9 +111,17 @@ const Flight: React.FC = () => {
               <IonIcon slot="icon-only" icon={checkmark}></IonIcon>
             </IonButton>
             {(fr.uuid !== NEW_FLIGHTRECORD) &&
-              <IonButton onClick={deleteFlightRecord}>
-                <IonIcon slot="icon-only" icon={close}></IonIcon>
-              </IonButton>
+              <>
+                <IonButton id="confirm-delete">
+                  <IonIcon slot="icon-only" icon={close}></IonIcon>
+                </IonButton>
+                <IonAlert header="Delete flight record?" trigger="confirm-delete"
+                  message="Are you sure you want to delete this flight record?"
+                  buttons={[
+                    { text: 'Confirm', role: 'confirm', handler: deleteFlightRecord },
+                    { text: 'Cancel', role: 'cancel' },
+                  ]}></IonAlert>
+              </>
             }
           </IonButtons>
           <IonTitle>{title}</IonTitle>

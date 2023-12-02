@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { AppSettings } from '../interfaces/Interfaces';
 import { Sync } from '../modules/sync/Sync';
 import { DBModel } from '../modules/db/DBModel';
+import { Toast } from '@capacitor/toast';
 
 
 const SETTINGS_KEY = 'SETTINGS_KET';
@@ -56,20 +57,23 @@ const Settings: React.FC = () => {
   const FlightRecordsUpdate = async () => {
     const sync = new Sync(settings);
     setIsSync(true);
+
+    await Toast.show({ text: `Synchronizing deleted records...` });
     await sync.syncDeletedItems();
+
+    await Toast.show({ text: `Synchronizing flight records...` });
     await sync.updateFlightRecords();
+
     await getFlightRecordsCount();
+
+    await Toast.show({ text: `Synchronization completed` });
     setIsSync(false);
   };
 
   const AirportsDBUpdate = async () => {
-    console.log(1111)
     const db = new DBModel();
     await db.initDBConnection();
-    const rr = await db.getFlightRecords();
-    console.log(rr)
 
-    await getFlightRecordsCount();
   };
 
   const AuthCheckClicked = async (e: any) => {

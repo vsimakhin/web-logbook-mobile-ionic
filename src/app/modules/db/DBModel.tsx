@@ -3,6 +3,7 @@ import { SQLiteDBConnection } from "react-sqlite-hook";
 import { sqlite } from "../../../App";
 import { Convert, DeletedItem, FlightRecord } from "../../interfaces/Interfaces";
 import { DB_STRUCTURE } from "./Structure";
+import { getTimestamp } from "../helpers/Helpers";
 
 const DBNAME = 'weblogbook.db';
 const DBVERSION = 1;
@@ -75,9 +76,29 @@ export class DBModel {
         }
     }
 
+    async getFlightRecordsForSync(): Promise<any | Error> {
+
+        let frs = [];
+
+        try {
+            const query = 'SELECT * FROM logbook_view ORDER BY m_date DESC, departure_time DESC';
+            const res = await this.db.query(query);
+
+            for (let i = 0; i < res.values!.length; i++) {
+                const fr = Convert.toFlightRecord(JSON.stringify(res.values![i]));
+                const converted = Convert.toFlightRecordForSync(fr);
+                frs.push(converted);
+            }
+
+            return frs;
+        } catch (err: any) {
+            return err as Error;
+        }
+    }
+
     async insertFlightRecord(fr: FlightRecord): Promise<void | Error> {
         if (fr.update_time === 0) {
-            fr.update_time = Date.now() / 1000;
+            fr.update_time = getTimestamp();
         }
 
         const query = `INSERT INTO logbook 
@@ -104,9 +125,9 @@ export class DBModel {
         }
     }
 
-    async updateFlightRecords(fr: FlightRecord): Promise<void | Error> {
+    async updateFlightRecord(fr: FlightRecord): Promise<void | Error> {
         if (fr.update_time === 0) {
-            fr.update_time = Date.now() / 1000;
+            fr.update_time = getTimestamp();
         }
 
         const query = `UPDATE logbook SET
@@ -136,7 +157,7 @@ export class DBModel {
 
             if (isSync) {
                 const query = `INSERT INTO deleted_items (uuid, table_name, delete_time) VALUES (?, ?, ?)`;
-                await this.db.query(query, [uuid, 'logbook', (Date.now() / 1000).toString()]);
+                await this.db.query(query, [uuid, 'logbook', (getTimestamp).toString()]);
             }
             return;
         } catch (err: any) {
@@ -154,19 +175,21 @@ export class DBModel {
      * @returns amount of updated/inserted records (0 or 1), or error if occurs
      */
     async syncFlightRecords(fr: FlightRecord): Promise<number | Error> {
-        const res = await this.db.query('SELECT uuid, update_time FROM logbook_view WHERE uuid = ?', [fr.uuid]);
+        const res = await this.db.query('SELECT * FROM logbook_view WHERE uuid = ?', [fr.uuid]);
         if (res.values!.length === 0) {
-            // add new flight record
-            const res = await this.insertFlightRecord(fr);
-            if (res instanceof Error) {
-                return res;
+            // no such uuid in the db, add new flight record
+            const insert = await this.insertFlightRecord(fr);
+            if (insert instanceof Error) {
+                return insert;
             } else {
                 return 1;
             }
         } else {
-            // update flight record
+            // local flight record exists, let's compare update_time
+            const lfr = Convert.toFlightRecord(JSON.stringify(res.values![0]));
             if (res.values![0].update_time < fr.update_time) {
-                const res = await this.updateFlightRecords(fr);
+                console.log(lfr.update_time, fr.update_time);
+                const res = await this.updateFlightRecord(fr);
                 if (res instanceof Error) {
                     return res;
                 } else {
@@ -181,7 +204,7 @@ export class DBModel {
 
     async syncDeletedItems(di: DeletedItem): Promise<void | Error> {
         if (di.table_name === 'logbook') {
-            this.deleteFlightRecord(di.uuid, false);
+            await this.deleteFlightRecord(di.uuid, false);
         }
         return;
     }
@@ -190,14 +213,24 @@ export class DBModel {
         let dis: DeletedItem[] = [];
 
         const res = await this.db.query('SELECT uuid, table_name, delete_time FROM deleted_items');
+
         if (res.values!.length !== 0) {
             for (let i = 0; i < res.values!.length; i++) {
-                const di = Convert.toDeletedItem(JSON.stringify(res.values![0]));
+                const di = Convert.toDeletedItem(JSON.stringify(res.values![i]));
                 dis.push(di);
             }
         }
 
         return dis;
+    }
+
+    /**
+     * Cleans up deleted items from the database.
+     * @returns A promise that resolves when the cleanup is complete.
+     */
+    async cleanDeletedItems(): Promise<void> {
+        await this.db.query('DELETE FROM deleted_items');
+        return;
     }
 
 };

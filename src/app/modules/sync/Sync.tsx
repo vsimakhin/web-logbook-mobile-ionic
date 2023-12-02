@@ -40,46 +40,41 @@ export class Sync {
         return `${this.settings.url}${path}`
     }
 
-    public async updateFlightRecords() {
+    public async updateFlightRecords(): Promise<void> {
         const db = new DBModel();
         await db.initDBConnection();
 
-        const frs = await this.get(this.getURL(this.SYNC_FLIGHT_RECORDS));
+        // download flight records from the main app
+        let frs = await this.get(this.getURL(this.SYNC_FLIGHT_RECORDS));
         if (frs === null) {
             return
         }
-
-        let err: Error;
-        let errorsCounter = 0;
-        let recordsCounter = 0;
-
-        await Toast.show({ text: `${frs.length} record(s) downloaded, synchronizing...` });
 
         for (let i = 0; i < frs.length; i++) {
             const fr = Convert.toFlightRecord(JSON.stringify(frs[i]));
 
             const res = await db.syncFlightRecords(fr);
             if (res instanceof Error) {
-                errorsCounter += 1;
-                err = res;
-            } else {
-                recordsCounter += res;
+                return;
             }
         }
 
-        if (errorsCounter !== 0) {
-            await Toast.show({ text: `Some errors (${errorsCounter} errors) occured. The last error is ${err!.message}` });
-        } else {
-            await Toast.show({ text: `${recordsCounter} record(s) have been updated` });
+        // upload flight records to the main app
+        frs = await db.getFlightRecordsForSync();
+        const payload = { 'flight_records': frs };
+        if (frs.length !== 0) {
+            const res = await this.post(this.getURL(this.SYNC_FLIGHT_RECORDS), payload);
         }
     }
 
-    public async syncDeletedItems() {
+    /**
+     * Synchronizes deleted items with the main app.
+     * Retrieves deleted items from the main app and uploads deleted items to the main app.
+     * Displays a toast message if any errors occur during the synchronization process.
+     */
+    public async syncDeletedItems(): Promise<void> {
         const db = new DBModel();
         await db.initDBConnection();
-
-        let err: Error;
-        let errorsCounter = 0;
 
         // get deleted items from the main app
         let dis = await this.get(this.getURL(this.SYNC_DELETED));
@@ -89,26 +84,24 @@ export class Sync {
 
                 const res = await db.syncDeletedItems(di);
                 if (res instanceof Error) {
-                    errorsCounter += 1;
-                    err = res;
+                    return;
                 }
             }
         }
 
         // upload deleted items to the main app
-        // some post request here
-
         dis = await db.getDeletedItems();
-        if (dis.length !== 0) {
-            this.post(this.getURL(this.SYNC_DELETED), dis);
-        }
+        const payload = { 'deleted_items': dis };
 
-        if (errorsCounter !== 0) {
-            await Toast.show({ text: `Some errors (${errorsCounter} errors) occured. The last error is ${err!.message}` });
+        if (dis.length !== 0) {
+            const res = await this.post(this.getURL(this.SYNC_DELETED), payload);
+            if (res === null) {
+                await db.cleanDeletedItems();
+            }
         }
     }
 
-    async get(url: string): Promise<any | Error> {
+    async get(url: string): Promise<any> {
         if (this.settings.auth) {
             const auth = await this.getCredentials();
             if (auth.status !== 200) {
@@ -140,7 +133,7 @@ export class Sync {
         }
     }
 
-    async post(url: string, payload: any) {
+    async post(url: string, payload: any): Promise<any> {
         if (this.settings.auth) {
             const auth = await this.getCredentials();
             if (auth.status !== 200) {
@@ -160,48 +153,18 @@ export class Sync {
 
         try {
             const response = await fetch(url, options);
-            console.log(response);
 
-            // if (response.status === 200) {
-            //     return response.json();
-            // } else {
-            //     showError(`Cannot load data - ${response.statusText}`);
-            // }
+            if (response.status === 200) {
+                return response.json();
+            } else {
+                Toast.show({ text: `Cannot upload data - ${response.statusText}` });
+                return null;
+            }
         }
-        catch (error) {
-            // showError(error);
-            console.log(error);
+        catch (err: any) {
+            await Toast.show({ text: err.message });
+            return null;
         }
     }
 
 }
-
-// export async function post(url: string, payload: any) {
-//     const options: RequestInit = {
-//         method: 'POST',
-//         headers: {
-//             "Accept": "application/json"
-//         },
-//         mode: 'no-cors',
-//         body: JSON.stringify(payload),
-//         credentials: 'same-origin',
-//         redirect: 'manual',
-//     }
-
-//     try {
-//         const response = await fetch(url, options);
-//         console.log(response);
-
-//         // if (response.status === 200) {
-//         //     return response.json();
-//         // } else {
-//         //     showError(`Cannot load data - ${response.statusText}`);
-//         // }
-//     }
-//     catch (error) {
-//         // showError(error);
-//         console.log(error);
-//     }
-// }
-
-

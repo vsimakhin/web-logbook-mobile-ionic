@@ -85,6 +85,50 @@ export class Convert {
         return JSON.stringify(uncast(value, r("FlightRecord")), null, 2);
     }
 
+    public static toFlightRecordForSync(value: FlightRecord): any {
+        const converted = {
+            "uuid": value.uuid,
+            "date": value.date,
+            "departure": {
+                "place": value.departure_place,
+                "time": value.departure_time
+            },
+            "arrival": {
+                "place": value.arrival_place,
+                "time": value.arrival_time
+            },
+            "aircraft": {
+                "model": value.aircraft_model,
+                "reg_name": value.reg_name
+            },
+            "time": {
+                "se_time": value.se_time,
+                "me_time": value.me_time,
+                "mcc_time": value.mcc_time,
+                "total_time": value.total_time,
+                "night_time": value.night_time,
+                "ifr_time": value.ifr_time,
+                "pic_time": value.pic_time,
+                "co_pilot_time": value.co_pilot_time,
+                "dual_time": value.dual_time,
+                "instructor_time": value.instructor_time,
+            },
+            "landings": {
+                "day": value.day_landings,
+                "night": value.night_landings
+            },
+            "sim": {
+                "type": value.sim_type,
+                "time": value.sim_time
+            },
+            "pic_name": value.pic_name,
+            "remarks": value.remarks,
+            "update_time": value.update_time,
+        }
+
+        return converted;
+    }
+
     public static toDeletedItem(json: string): DeletedItem {
         return cast(JSON.parse(json), r("DeletedItem"));
     }

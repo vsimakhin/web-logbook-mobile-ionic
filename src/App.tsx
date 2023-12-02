@@ -80,7 +80,7 @@ const App: React.FC = () => {
             </IonTabButton>
             <IonTabButton tab="settings" href="/settings">
               <IonIcon aria-hidden="true" icon={cog} />
-              <IonLabel>Settings</IonLabel>
+              <IonLabel>Settings & Sync</IonLabel>
             </IonTabButton>
           </IonTabBar>
         </IonTabs>
