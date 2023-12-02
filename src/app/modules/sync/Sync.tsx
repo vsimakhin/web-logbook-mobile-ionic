@@ -1,4 +1,4 @@
-import { AppSettings, Convert } from '../../interfaces/Interfaces';
+import { AppSettings, Convert, Airport } from '../../interfaces/Interfaces';
 import { Toast } from '@capacitor/toast';
 import { DBModel } from '../db/DBModel';
 
@@ -11,6 +11,7 @@ export class Sync {
     private SYNC_LOGIN = '/login'
     private SYNC_FLIGHT_RECORDS = '/sync/flightrecords';
     private SYNC_DELETED = '/sync/deleted';
+    private SYNC_AIRPORTS = '/sync/airports';
 
     constructor(settings: AppSettings) {
         this.settings = settings;
@@ -56,7 +57,7 @@ export class Sync {
      * Synchronizes flight records with the main app.
      * Downloads flight records from the main app and uploads flight records to the main app.
      */
-    public async updateFlightRecords(): Promise<void> {
+    async updateFlightRecords(): Promise<void> {
         const db = new DBModel();
         await db.initDBConnection();
 
@@ -87,7 +88,7 @@ export class Sync {
      * Synchronizes deleted items with the main app.
      * Retrieves deleted items from the main app and uploads deleted items to the main app.
      */
-    public async syncDeletedItems(): Promise<void> {
+    async syncDeletedItems(): Promise<void> {
         const db = new DBModel();
         await db.initDBConnection();
 
@@ -113,6 +114,33 @@ export class Sync {
             if (res === null) {
                 await db.cleanDeletedItems();
             }
+        }
+    }
+
+    /**
+     * Downloads airports database from the main app and updates airports database.
+     */
+    async updateAirportsDB(): Promise<void> {
+        let airports: Airport[] = [];
+
+        // get airports from the main app
+        const json = await this.get(this.getURL(this.SYNC_AIRPORTS));
+        if (json === null) {
+            return;
+        }
+
+        // convert json to Airport[]
+        for (let i = 0; i < json.length; i++) {
+            const airport = Convert.toAirport(JSON.stringify(json[i]));
+            airports.push(airport);
+        }
+
+        // update airports database
+        const db = new DBModel();
+        await db.initDBConnection();
+        const res = await db.updateAirportsDB(airports);
+        if (res instanceof Error) {
+            await Toast.show({ text: `Error updating airports database` });
         }
     }
 

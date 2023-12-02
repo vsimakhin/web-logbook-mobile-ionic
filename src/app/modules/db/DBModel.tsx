@@ -1,7 +1,6 @@
 
-import { SQLiteDBConnection } from "react-sqlite-hook";
 import { sqlite } from "../../../App";
-import { Convert, DeletedItem, FlightRecord } from "../../interfaces/Interfaces";
+import { Airport, Convert, DeletedItem, FlightRecord } from "../../interfaces/Interfaces";
 import { DB_STRUCTURE } from "./Structure";
 import { getTimestamp } from "../helpers/Helpers";
 
@@ -55,6 +54,15 @@ export class DBModel {
      */
     async getFlightRecordsCount(): Promise<number> {
         const res = await this.db.query('SELECT COUNT(uuid) AS count FROM logbook_view');
+        return res.values![0].count;
+    }
+
+    /**
+     * Returns a number of airports in the database.
+     * @returns A promise that resolves with the number of airports in the database.
+     */
+    async getAirportsCount(): Promise<number> {
+        const res = await this.db.query('SELECT COUNT(icao) AS count FROM airports');
         return res.values![0].count;
     }
 
@@ -240,7 +248,6 @@ export class DBModel {
         return;
     }
 
-
     /**
      * Retrieves the deleted items from the database.
      * @returns A promise that resolves to an array of DeletedItem objects.
@@ -266,6 +273,52 @@ export class DBModel {
      */
     async cleanDeletedItems(): Promise<void> {
         await this.db.query('DELETE FROM deleted_items');
+        return;
+    }
+
+
+    /**
+     * Updates the airports database with the provided airport data.
+     * 
+     * @param airports - An array of Airport objects containing the airport data to be updated.
+     * @returns A Promise that resolves with void if the update is successful, or an Error if an error occurs.
+     */
+    async updateAirportsDB(airports: Airport[]): Promise<void | Error> {
+        // drop indexes, truncate table, create indexes sql queries
+        const dropIndexes = `
+            DROP INDEX IF EXISTS airports_icao;
+            DROP INDEX IF EXISTS airports_iata;
+        `;
+        const truncateTable = 'DELETE FROM airports;';
+        const createIndexes = `
+            CREATE UNIQUE INDEX IF NOT EXISTS airports_icao ON airports(icao);
+            CREATE INDEX IF NOT EXISTS airports_iata ON airports(iata);
+        `;
+        const query = `INSERT INTO airports (icao, iata, name, city, country, elevation, lat, lon)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+
+        try {
+            // drop indexes and remove all data from airports table
+            await this.db.query(dropIndexes);
+            await this.db.query(truncateTable);
+
+
+            // insert new airport data
+            for (let i = 0; i < airports.length; i++) {
+                await this.db.query(query, [
+                    airports[i].icao, airports[i].iata, airports[i].name,
+                    airports[i].city, airports[i].country, airports[i].elevation,
+                    airports[i].lat, airports[i].lon
+                ]);
+            }
+
+            // create indexes
+            await this.db.query(createIndexes);
+
+        } catch (err: any) {
+            return err as Error;
+        }
+
         return;
     }
 

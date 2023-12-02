@@ -89,6 +89,20 @@ export interface DeletedItem {
     delete_time?: string;
 }
 
+/**
+ * Represents an airport
+ */
+export interface Airport {
+    icao: string;
+    iata: string;
+    name: string;
+    city: string;
+    country: string;
+    elevation: number;
+    lat: number;
+    lon: number;
+}
+
 // https://app.quicktype.io/
 export class Convert {
     public static toFlightRecord(json: string): FlightRecord {
@@ -149,6 +163,14 @@ export class Convert {
 
     public static deletedItemToJson(value: DeletedItem): string {
         return JSON.stringify(uncast(value, r("DeletedItem")), null, 2);
+    }
+
+    public static toAirport(json: string): Airport {
+        return cast(JSON.parse(json), r("Airport"));
+    }
+
+    public static airportToJson(value: Airport): string {
+        return JSON.stringify(uncast(value, r("Airport")), null, 2);
     }
 }
 
@@ -337,5 +359,15 @@ const typeMap: any = {
         { json: "delete_time", js: "delete_time", typ: "" },
         { json: "table_name", js: "table_name", typ: "" },
         { json: "uuid", js: "uuid", typ: "" },
+    ], false),
+    "Airport": o([
+        { json: "city", js: "city", typ: "" },
+        { json: "country", js: "country", typ: "" },
+        { json: "elevation", js: "elevation", typ: 0 },
+        { json: "iata", js: "iata", typ: "" },
+        { json: "icao", js: "icao", typ: "" },
+        { json: "lat", js: "lat", typ: 3.14 },
+        { json: "lon", js: "lon", typ: 3.14 },
+        { json: "name", js: "name", typ: "" },
     ], false),
 };

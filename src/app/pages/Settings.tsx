@@ -24,7 +24,7 @@ const Settings: React.FC = () => {
 
   const [isSync, setIsSync] = useState(false);
   const [flightRecordsSyncTitle, setFlightRecordsSyncTitle] = useState('Flight records')
-
+  const [airportsUpdateTitle, setAirportsUpdateTitle] = useState('Airports');
 
   const loadData = async () => {
     const { value } = await Preferences.get({ key: SETTINGS_KEY });
@@ -39,18 +39,18 @@ const Settings: React.FC = () => {
   }, []);
 
   useIonViewDidEnter(() => {
-    getFlightRecordsCount();
+    getRecordsCount();
   });
 
-  /**
-   * Returns a number of flight records in the database.
-   */
-  const getFlightRecordsCount = async () => {
+  const getRecordsCount = async () => {
     const db = new DBModel();
     await db.initDBConnection();
+
     const frCount = await db.getFlightRecordsCount();
+    const airports = await db.getAirportsCount();
 
     setFlightRecordsSyncTitle(`Flight records (${frCount} records)`);
+    setAirportsUpdateTitle(`Airports (${airports} records)`);
   }
 
   /**
@@ -74,15 +74,23 @@ const Settings: React.FC = () => {
     await Toast.show({ text: `Synchronizing flight records...` });
     await sync.updateFlightRecords();
 
-    await getFlightRecordsCount();
+    await getRecordsCount();
 
     await Toast.show({ text: `Synchronization completed` });
     setIsSync(false);
   };
 
   const AirportsDBUpdate = async () => {
-    const db = new DBModel();
-    await db.initDBConnection();
+    const sync = new Sync(settings);
+    setIsSync(true);
+
+    await Toast.show({ text: `Updating airports database...` });
+    await sync.updateAirportsDB();
+
+    await getRecordsCount();
+    await Toast.show({ text: `Airports database updated` });
+
+    setIsSync(false);
 
   };
 
@@ -155,7 +163,7 @@ const Settings: React.FC = () => {
             </IonItem>
             <IonItem>
               <IonIcon icon={reorderFour} slot="start"></IonIcon>
-              <IonInput label="Airports" readonly={true}></IonInput>
+              <IonInput label={airportsUpdateTitle} readonly={true}></IonInput>
               <IonButton onClick={AirportsDBUpdate} disabled={isSync}>Update</IonButton>
             </IonItem>
           </IonItemGroup>
