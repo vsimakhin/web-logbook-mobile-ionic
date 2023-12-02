@@ -50,13 +50,18 @@ export class DBModel {
     ////////////////////////////////////////////////////////////////////////////
 
     /**
-     * @returns number of the flight records in the database
+     * Returns a number of flight records in the database.
+     * @returns A promise that resolves with the number of flight records in the database.
      */
     async getFlightRecordsCount(): Promise<number> {
         const res = await this.db.query('SELECT COUNT(uuid) AS count FROM logbook_view');
         return res.values![0].count;
     }
 
+    /**
+     * Returns a number of flight records in the database.
+     * @returns A promise that resolves with the number of flight records in the database.
+     */
     async getFlightRecords(): Promise<FlightRecord[] | Error> {
 
         let frs: FlightRecord[] = [];
@@ -76,6 +81,10 @@ export class DBModel {
         }
     }
 
+    /**
+     * Returns a number of flight records in the database for the syncrronization with a main app.
+     * @returns A promise that resolves with the number of flight records in the database.
+     */
     async getFlightRecordsForSync(): Promise<any | Error> {
 
         let frs = [];
@@ -96,6 +105,12 @@ export class DBModel {
         }
     }
 
+
+    /**
+     * Inserts a flight record into the database.
+     * @param fr - The flight record to be inserted.
+     * @returns A promise that resolves with void if the insertion is successful, or an Error if there is an error.
+     */
     async insertFlightRecord(fr: FlightRecord): Promise<void | Error> {
         if (fr.update_time === 0) {
             fr.update_time = getTimestamp();
@@ -125,6 +140,11 @@ export class DBModel {
         }
     }
 
+    /**
+     * Updates a flight record in the database.
+     * @param fr - The flight record to be updated.
+     * @returns A promise that resolves with void if the update is successful, or an Error if there is an error.
+     */
     async updateFlightRecord(fr: FlightRecord): Promise<void | Error> {
         if (fr.update_time === 0) {
             fr.update_time = getTimestamp();
@@ -151,6 +171,12 @@ export class DBModel {
 
     }
 
+    /**
+     * Deletes a flight record from the database.
+     * @param uuid - The uuid of the flight record to be deleted.
+     * @param isSync - Whether or not to synchronize the deletion with the main app.
+     * @returns A promise that resolves with void if the deletion is successful, or an Error if there is an error.
+     */
     async deleteFlightRecord(uuid: string, isSync = true): Promise<void | Error> {
         try {
             await this.db.query('DELETE FROM logbook WHERE uuid = ?', [uuid]);
@@ -202,6 +228,11 @@ export class DBModel {
 
     }
 
+    /**
+     * Synchronizes deleted items from the main application
+     * @param di - deleted item to sync
+     * @returns void or error if occurs
+     */
     async syncDeletedItems(di: DeletedItem): Promise<void | Error> {
         if (di.table_name === 'logbook') {
             await this.deleteFlightRecord(di.uuid, false);
@@ -209,6 +240,11 @@ export class DBModel {
         return;
     }
 
+
+    /**
+     * Retrieves the deleted items from the database.
+     * @returns A promise that resolves to an array of DeletedItem objects.
+     */
     async getDeletedItems(): Promise<DeletedItem[]> {
         let dis: DeletedItem[] = [];
 

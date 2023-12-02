@@ -1,5 +1,8 @@
 export const NEW_FLIGHTRECORD = "NEW_FLIGHTRECORD"
 
+/**
+ * Represents an application settings
+ */
 export interface AppSettings {
     url: string;
     user: string;
@@ -7,6 +10,9 @@ export interface AppSettings {
     auth: boolean;
 }
 
+/**
+ * Represents a flight record
+ */
 export interface FlightRecord {
     uuid: string;
     aircraft_model: string;
@@ -36,6 +42,11 @@ export interface FlightRecord {
     m_date?: string;
 }
 
+
+/**
+ * Creates an empty FlightRecord object.
+ * @returns {FlightRecord} The empty FlightRecord object.
+ */
 export function emptyFlightRecord(): FlightRecord {
     let fr: FlightRecord = {
         uuid: '',
@@ -69,6 +80,9 @@ export function emptyFlightRecord(): FlightRecord {
     return fr;
 }
 
+/**
+ * Represents a deleted item
+ */
 export interface DeletedItem {
     uuid: string;
     table_name?: string;

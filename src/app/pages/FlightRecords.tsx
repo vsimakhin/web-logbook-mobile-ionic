@@ -29,10 +29,19 @@ const FlightRecords: React.FC = () => {
     loadData();
   });
 
-  const omitColumn = () => {
+
+  /**
+   * Determines whether to omit the column based on the width.
+   * @returns {boolean} True if the column should be omitted, false otherwise.
+   */
+  const omitColumn = (): boolean => {
     return true && width < 400
   }
 
+  /**
+   * Calculates the number of rows per page based on the available height.
+   * @returns The number of rows per page.
+   */
   const getRowsPerPage = () => {
     const headerSize = 100;
     const footerSize = 100;
@@ -44,16 +53,29 @@ const FlightRecords: React.FC = () => {
 
   const history = useHistory();
 
+  /**
+   * Handles the click event on a row in the FlightRecords table.
+   * Navigates to the '/flight' route with the selected flight record.
+   * @param row - The selected flight record.
+   * @param event - The click event.
+   */
   const onRowClicked = async (row: FlightRecord, event: React.MouseEvent<Element, MouseEvent>) => {
     history.push('/flight', { fr: row });
   }
 
+  /**
+   * Handles the click event on the New button.
+   * Navigates to the '/flight' route with a new flight record.
+   */
   const onNewClicked = async () => {
     let fr = emptyFlightRecord();
     fr.uuid = NEW_FLIGHTRECORD;
     history.push('/flight', { fr: fr });
   }
 
+  /**
+   * Defines the columns for the FlightRecords table.
+   */
   const columns: TableColumn<FlightRecord>[] = [
     { name: 'uuid', selector: row => row.uuid, omit: true, },
     { name: 'Date', selector: row => row.date, width: '100px' },

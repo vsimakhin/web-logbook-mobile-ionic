@@ -22,7 +22,6 @@ const Flight: React.FC = () => {
 
   /**
    * Returns the title for a flight record.
-   * 
    * @param fr - The flight record.
    * @returns The title string.
    */

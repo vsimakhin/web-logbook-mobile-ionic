@@ -42,6 +42,9 @@ const Settings: React.FC = () => {
     getFlightRecordsCount();
   });
 
+  /**
+   * Returns a number of flight records in the database.
+   */
   const getFlightRecordsCount = async () => {
     const db = new DBModel();
     await db.initDBConnection();
@@ -50,10 +53,17 @@ const Settings: React.FC = () => {
     setFlightRecordsSyncTitle(`Flight records (${frCount} records)`);
   }
 
+  /**
+   * Saves settings to the storage
+   * @param appSettings 
+   */
   const saveSettings = async (appSettings: AppSettings) => {
     await Preferences.set({ key: SETTINGS_KEY, value: JSON.stringify(appSettings) });
   };
 
+  /**
+   * Runs synchronization of flight records with the main app.
+   */
   const FlightRecordsUpdate = async () => {
     const sync = new Sync(settings);
     setIsSync(true);

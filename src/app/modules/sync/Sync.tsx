@@ -2,6 +2,9 @@ import { AppSettings, Convert } from '../../interfaces/Interfaces';
 import { Toast } from '@capacitor/toast';
 import { DBModel } from '../db/DBModel';
 
+/**
+ * Represents a synchronization utility for syncing data with the main app.
+ */
 export class Sync {
     private settings: AppSettings;
 
@@ -13,6 +16,10 @@ export class Sync {
         this.settings = settings;
     }
 
+    /**
+     * Retrieves credentials from the main app.
+     * @returns a response object
+     */
     async getCredentials() {
         const url = this.getURL(this.SYNC_LOGIN);
 
@@ -36,10 +43,19 @@ export class Sync {
         return response;
     }
 
+    /**
+     * Returns a full URL for the main app.
+     * @param path - path to the main app
+     * @returns a full URL
+     */
     getURL(path: string) {
         return `${this.settings.url}${path}`
     }
 
+    /**
+     * Synchronizes flight records with the main app.
+     * Downloads flight records from the main app and uploads flight records to the main app.
+     */
     public async updateFlightRecords(): Promise<void> {
         const db = new DBModel();
         await db.initDBConnection();
@@ -70,7 +86,6 @@ export class Sync {
     /**
      * Synchronizes deleted items with the main app.
      * Retrieves deleted items from the main app and uploads deleted items to the main app.
-     * Displays a toast message if any errors occur during the synchronization process.
      */
     public async syncDeletedItems(): Promise<void> {
         const db = new DBModel();
@@ -101,6 +116,12 @@ export class Sync {
         }
     }
 
+    /**
+     * Performs a GET request to the specified URL and returns the response data.
+     * If authentication is enabled, it will include the necessary credentials.
+     * @param url - The URL to send the GET request to.
+     * @returns A Promise that resolves to the response data, or null if an error occurs.
+     */
     async get(url: string): Promise<any> {
         if (this.settings.auth) {
             const auth = await this.getCredentials();
@@ -133,6 +154,13 @@ export class Sync {
         }
     }
 
+    /**
+     * Performs a POST request to the specified URL and returns the response data.
+     * If authentication is enabled, it will include the necessary credentials.
+     * @param url - The URL to send the POST request to.
+     * @param payload - The payload to send with the POST request.
+     * @returns A Promise that resolves to the response data, or null if an error occurs.
+     */
     async post(url: string, payload: any): Promise<any> {
         if (this.settings.auth) {
             const auth = await this.getCredentials();
