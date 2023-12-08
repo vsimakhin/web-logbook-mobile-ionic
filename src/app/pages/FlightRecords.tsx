@@ -7,6 +7,7 @@ import DataTable, { TableColumn } from 'react-data-table-component';
 import useWindowDimensions from '../modules/helpers/WindowDimensions';
 import { useHistory } from 'react-router';
 import { add } from 'ionicons/icons';
+import { getCurrentDate } from '../modules/helpers/Helpers';
 
 const FlightRecords: React.FC = () => {
 
@@ -70,6 +71,7 @@ const FlightRecords: React.FC = () => {
   const onNewClicked = async () => {
     let fr = emptyFlightRecord();
     fr.uuid = NEW_FLIGHTRECORD;
+    fr.date = getCurrentDate();
     history.push('/flight', { fr: fr });
   }
 

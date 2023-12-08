@@ -10,7 +10,6 @@ import { Sync } from '../modules/sync/Sync';
 import { DBModel } from '../modules/db/DBModel';
 import { Toast } from '@capacitor/toast';
 
-
 const SETTINGS_KEY = 'SETTINGS_KET';
 
 const Settings: React.FC = () => {

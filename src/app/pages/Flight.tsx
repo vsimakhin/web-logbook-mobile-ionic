@@ -6,11 +6,12 @@ import {
 import { useEffect, useState } from 'react';
 import { useHistory, useLocation } from 'react-router';
 import { FlightRecord, NEW_FLIGHTRECORD, emptyFlightRecord } from '../interfaces/Interfaces';
-import { checkmark, close } from 'ionicons/icons';
+import { checkmark, close, ticketSharp } from 'ionicons/icons';
 import { DBModel } from '../modules/db/DBModel';
 import { Toast } from '@capacitor/toast';
 import { v4 as uuidv4 } from 'uuid';
-import { getTimestamp } from '../modules/helpers/Helpers';
+import { getTimestamp, parseDateString } from '../modules/helpers/Helpers';
+import { Place, Route, flightTime, formatDuration, nightTime, routeDistance, sunrise, sunset } from '../modules/nighttime/Nighttime';
 
 const Flight: React.FC = () => {
 
@@ -98,6 +99,78 @@ const Flight: React.FC = () => {
     }
   }
 
+  /**
+   * Calculates the night time for the flight record.
+   */
+  const calculateNightTime = async (): Promise<string> => {
+    const db = new DBModel();
+    await db.initDBConnection();
+
+    const departure = await db.getAirport(fr.departure_place);
+    const arrival = await db.getAirport(fr.arrival_place);
+    const departureTime = parseDateString(`${fr.date} ${fr.departure_time}`);
+    const arrivalTime = parseDateString(`${fr.date} ${fr.arrival_time}`);
+
+    if ((departure instanceof Error) || (arrival instanceof Error) ||
+      (departureTime instanceof Error) || (arrivalTime instanceof Error)) {
+      return '';
+    }
+
+    const dep: Place = { lat: departure.lat, lon: departure.lon, time: departureTime };
+    const arr: Place = { lat: arrival.lat, lon: arrival.lon, time: arrivalTime };
+
+    // check time, arrival should be after departure
+    if (arr.time < dep.time) {
+      arr.time.setDate(arr.time.getDate() + 1);
+    }
+
+    const nt = nightTime({ departure: dep, arrival: arr } as Route);
+    if (fr.night_time !== '') {
+      return fr.night_time; // we don't want overwrite the night time if it is already set
+    } else if (nt !== 0) {
+      return formatDuration(nt);
+    } else {
+      return '';
+    }
+  }
+
+  /**
+   * Calculates the flight time for the flight record.
+   */
+  const calculateFlightTime = async (): Promise<string> => {
+    const departureTime = parseDateString(`${fr.date} ${fr.departure_time}`);
+    const arrivalTime = parseDateString(`${fr.date} ${fr.arrival_time}`);
+
+    if ((departureTime instanceof Error) || (arrivalTime instanceof Error)) {
+      return '';
+    }
+
+    // check time, arrival should be after departure
+    if (arrivalTime < departureTime) {
+      arrivalTime.setDate(arrivalTime.getDate() + 1);
+    }
+
+    const ft = arrivalTime.getTime() - departureTime.getTime();
+    if (ft !== 0) {
+      return formatDuration(ft);
+    } else {
+      return '';
+    }
+  }
+
+  /**
+   * Calculates the night time and the flight time for the flight record.
+   * @returns {Promise<void>} A promise that resolves when the night time and the flight time are calculated.
+   */
+  const calculateTimes = async (): Promise<void> => {
+    const nt = await calculateNightTime();
+    const ft = await calculateFlightTime();
+
+    setFlightRecord({ ...fr, night_time: nt, total_time: ft });
+  }
+
+
+
   return (
     <IonPage>
       <IonHeader>
@@ -132,29 +205,18 @@ const Flight: React.FC = () => {
           <IonRow>
             <IonCol>
               <IonItem>
-                <IonInput label="Date" labelPlacement="stacked" placeholder="DD/MM/YYYY"
-                  value={fr.date} onIonInput={(e: any) => { setFlightRecord({ ...fr, date: e.target.value }) }}></IonInput>
+                <IonInput label="Date" labelPlacement="stacked" placeholder="DD/MM/YYYY" value={fr.date}
+                  onIonInput={(e: any) => { setFlightRecord({ ...fr, date: e.target.value }) }}
+                  onIonChange={calculateTimes}>
+                </IonInput>
               </IonItem>
             </IonCol>
             <IonCol>
               <IonItem>
-                <IonInput label="Pilot in Command" labelPlacement="stacked" placeholder="Pilot in Command"
-                  value={fr.pic_name} onIonInput={(e: any) => { setFlightRecord({ ...fr, pic_name: e.target.value }) }}></IonInput>
-              </IonItem>
-            </IonCol>
-          </IonRow>
-
-          <IonRow>
-            <IonCol>
-              <IonItem>
-                <IonInput label="Departure Place" labelPlacement="stacked" placeholder="Departure Place"
-                  value={fr.departure_place} onIonInput={(e: any) => { setFlightRecord({ ...fr, departure_place: e.target.value }) }}></IonInput>
-              </IonItem>
-            </IonCol>
-            <IonCol>
-              <IonItem>
-                <IonInput label="Departure Time" labelPlacement="stacked" placeholder="HHMM"
-                  value={fr.departure_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, departure_time: e.target.value }) }}></IonInput>
+                <IonInput label="Pilot in Command" labelPlacement="stacked" placeholder="Pilot in Command" value={fr.pic_name}
+                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, pic_name: 'Self' }) }}
+                  onIonInput={(e: any) => { setFlightRecord({ ...fr, pic_name: e.target.value }) }}>
+                </IonInput>
               </IonItem>
             </IonCol>
           </IonRow>
@@ -162,14 +224,41 @@ const Flight: React.FC = () => {
           <IonRow>
             <IonCol>
               <IonItem>
-                <IonInput label="Arrival Place" labelPlacement="stacked" placeholder="Arrival Place"
-                  value={fr.arrival_place} onIonInput={(e: any) => { setFlightRecord({ ...fr, arrival_place: e.target.value }) }}></IonInput>
+                <IonInput label="Departure Place" labelPlacement="stacked" placeholder="Departure Place" value={fr.departure_place}
+                  autocapitalize='characters'
+                  onIonInput={(e: any) => { setFlightRecord({ ...fr, departure_place: e.target.value }) }}
+                  onIonChange={calculateTimes}>
+                </IonInput>
               </IonItem>
             </IonCol>
             <IonCol>
               <IonItem>
-                <IonInput label="Arrival Time" labelPlacement="stacked" placeholder="HHMM"
-                  value={fr.arrival_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, arrival_time: e.target.value }) }}></IonInput>
+                <IonInput label="Departure Time" labelPlacement="stacked" placeholder="HHMM" value={fr.departure_time}
+                  maxlength={4}
+                  onIonInput={(e: any) => { setFlightRecord({ ...fr, departure_time: e.target.value }) }}
+                  onIonChange={calculateTimes}>
+                </IonInput>
+              </IonItem>
+            </IonCol>
+          </IonRow>
+
+          <IonRow>
+            <IonCol>
+              <IonItem>
+                <IonInput label="Arrival Place" labelPlacement="stacked" placeholder="Arrival Place" value={fr.arrival_place}
+                  autocapitalize='characters'
+                  onIonInput={(e: any) => { setFlightRecord({ ...fr, arrival_place: e.target.value }) }}
+                  onIonChange={calculateTimes}>
+                </IonInput>
+              </IonItem>
+            </IonCol>
+            <IonCol>
+              <IonItem>
+                <IonInput label="Arrival Time" labelPlacement="stacked" placeholder="HHMM" value={fr.arrival_time}
+                  maxlength={4}
+                  onIonInput={(e: any) => { setFlightRecord({ ...fr, arrival_time: e.target.value }) }}
+                  onIonChange={calculateTimes}>
+                </IonInput>
               </IonItem>
             </IonCol>
           </IonRow>
@@ -214,18 +303,21 @@ const Flight: React.FC = () => {
             <IonCol>
               <IonItem>
                 <IonInput label="SE" labelPlacement="stacked" placeholder="HH:MM"
+                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, se_time: fr.total_time }) }}
                   value={fr.se_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, se_time: e.target.value }) }}></IonInput>
               </IonItem>
             </IonCol>
             <IonCol>
               <IonItem>
                 <IonInput label="ME" labelPlacement="stacked" placeholder="HH:MM"
+                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, me_time: fr.total_time }) }}
                   value={fr.me_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, me_time: e.target.value }) }}></IonInput>
               </IonItem>
             </IonCol>
             <IonCol>
               <IonItem>
                 <IonInput label="MCC" labelPlacement="stacked" placeholder="HH:MM"
+                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, mcc_time: fr.total_time }) }}
                   value={fr.mcc_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, mcc_time: e.target.value }) }}></IonInput>
               </IonItem>
             </IonCol>
@@ -235,18 +327,21 @@ const Flight: React.FC = () => {
             <IonCol>
               <IonItem>
                 <IonInput label="Night" labelPlacement="stacked" placeholder="HH:MM"
+                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, night_time: fr.total_time }) }}
                   value={fr.night_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, night_time: e.target.value }) }}></IonInput>
               </IonItem>
             </IonCol>
             <IonCol>
               <IonItem>
                 <IonInput label="IFR" labelPlacement="stacked" placeholder="HH:MM"
+                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, ifr_time: fr.total_time }) }}
                   value={fr.ifr_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, ifr_time: e.target.value }) }}></IonInput>
               </IonItem>
             </IonCol>
             <IonCol>
               <IonItem>
                 <IonInput label="PIC" labelPlacement="stacked" placeholder="HH:MM"
+                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, pic_time: fr.total_time }) }}
                   value={fr.pic_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, pic_time: e.target.value }) }}></IonInput>
               </IonItem>
             </IonCol>
@@ -256,18 +351,21 @@ const Flight: React.FC = () => {
             <IonCol>
               <IonItem>
                 <IonInput label="Co Pilot" labelPlacement="stacked" placeholder="HH:MM"
+                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, co_pilot_time: fr.total_time }) }}
                   value={fr.co_pilot_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, co_pilot_time: e.target.value }) }}></IonInput>
               </IonItem>
             </IonCol>
             <IonCol>
               <IonItem>
                 <IonInput label="Dual" labelPlacement="stacked" placeholder="HH:MM"
+                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, dual_time: fr.total_time }) }}
                   value={fr.dual_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, dual_time: e.target.value }) }}></IonInput>
               </IonItem>
             </IonCol>
             <IonCol>
               <IonItem>
                 <IonInput label="Instr" labelPlacement="stacked" placeholder="HH:MM"
+                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, instructor_time: fr.total_time }) }}
                   value={fr.instructor_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, instructor_time: e.target.value }) }}></IonInput>
               </IonItem>
             </IonCol>
@@ -283,6 +381,7 @@ const Flight: React.FC = () => {
             <IonCol>
               <IonItem>
                 <IonInput label="Sim Time" labelPlacement="stacked" placeholder="HH:MM"
+                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, sim_time: fr.total_time }) }}
                   value={fr.sim_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, sim_time: e.target.value }) }}></IonInput>
               </IonItem>
             </IonCol>

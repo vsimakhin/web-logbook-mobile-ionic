@@ -45,6 +45,27 @@ export class DBModel {
     }
 
     ////////////////////////////////////////////////////////////////////////////
+    // Airports functions
+    ////////////////////////////////////////////////////////////////////////////
+    /**
+     * Returns a number of airports in the database.
+     * @returns A promise that resolves with the number of airports in the database.
+     */
+    async getAirportsCount(): Promise<number> {
+        const res = await this.db.query('SELECT COUNT(icao) AS count FROM airports');
+        return res.values![0].count;
+    }
+
+    async getAirport(id: string): Promise<Airport | Error> {
+        const res = await this.db.query('SELECT * FROM airports WHERE icao = ? OR iata = ?', [id, id]);
+        if (res.values!.length === 0) {
+            return new Error('No such airport');
+        } else {
+            return Convert.toAirport(JSON.stringify(res.values![0]));
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
     // Flight records functions
     ////////////////////////////////////////////////////////////////////////////
 
@@ -54,15 +75,6 @@ export class DBModel {
      */
     async getFlightRecordsCount(): Promise<number> {
         const res = await this.db.query('SELECT COUNT(uuid) AS count FROM logbook_view');
-        return res.values![0].count;
-    }
-
-    /**
-     * Returns a number of airports in the database.
-     * @returns A promise that resolves with the number of airports in the database.
-     */
-    async getAirportsCount(): Promise<number> {
-        const res = await this.db.query('SELECT COUNT(icao) AS count FROM airports');
         return res.values![0].count;
     }
 
