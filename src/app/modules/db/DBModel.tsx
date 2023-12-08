@@ -3,6 +3,7 @@ import { sqlite } from "../../../App";
 import { Airport, Convert, DeletedItem, FlightRecord } from "../../interfaces/Interfaces";
 import { DB_STRUCTURE } from "./Structure";
 import { getTimestamp } from "../helpers/Helpers";
+import { Toast } from "@capacitor/toast";
 
 const DBNAME = 'weblogbook.db';
 const DBVERSION = 1;
@@ -322,6 +323,11 @@ export class DBModel {
                     airports[i].city, airports[i].country, airports[i].elevation,
                     airports[i].lat, airports[i].lon
                 ]);
+
+                // show toast with info every 1500 records
+                if (i % 1500 === 0 && i !== 0) {
+                    await Toast.show({ text: `${i} of ${airports.length} records updated` });
+                }
             }
 
             // create indexes

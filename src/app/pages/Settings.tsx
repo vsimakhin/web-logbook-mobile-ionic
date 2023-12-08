@@ -131,7 +131,7 @@ const Settings: React.FC = () => {
             </IonItemDivider>
             <IonItem>
               <IonIcon icon={server} slot="start"></IonIcon>
-              <IonInput label="Server" placeholder="Main app address" value={settings.url} onIonChange={serverAddressChange} ></IonInput>
+              <IonInput label="Server" placeholder="Main app address" value={settings.url} onIonInput={serverAddressChange} ></IonInput>
             </IonItem>
             <IonItem>
               <IonIcon icon={build} slot="start"></IonIcon>
@@ -142,11 +142,11 @@ const Settings: React.FC = () => {
               <>
                 <IonItem>
                   <IonIcon icon={personCircle} slot="start"></IonIcon>
-                  <IonInput label="Username" placeholder="Username" value={settings.user} onIonChange={userNameChange}></IonInput>
+                  <IonInput label="Username" placeholder="Username" value={settings.user} onIonInput={userNameChange}></IonInput>
                 </IonItem>
                 <IonItem>
                   <IonIcon icon={paw} slot="start"></IonIcon>
-                  <IonInput label="Password" type="password" placeholder="Password" value={settings.pwd} onIonChange={pwdChange}></IonInput>
+                  <IonInput label="Password" type="password" placeholder="Password" value={settings.pwd} onIonInput={pwdChange}></IonInput>
                 </IonItem>
               </>
             }
@@ -157,12 +157,12 @@ const Settings: React.FC = () => {
             </IonItemDivider>
             <IonItem>
               <IonIcon icon={airplane} slot="start"></IonIcon>
-              <IonInput label={flightRecordsSyncTitle} readonly={true}></IonInput>
+              <IonLabel>{flightRecordsSyncTitle}</IonLabel>
               <IonButton onClick={FlightRecordsUpdate} disabled={isSync}>Update</IonButton>
             </IonItem>
             <IonItem>
               <IonIcon icon={reorderFour} slot="start"></IonIcon>
-              <IonInput label={airportsUpdateTitle} readonly={true}></IonInput>
+              <IonLabel>{airportsUpdateTitle}</IonLabel>
               <IonButton onClick={AirportsDBUpdate} disabled={isSync}>Update</IonButton>
             </IonItem>
           </IonItemGroup>
