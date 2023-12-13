@@ -1,17 +1,34 @@
 import {
+  IonActionSheet,
   IonAlert,
   IonBackButton, IonButton, IonButtons, IonCol, IonContent, IonGrid, IonHeader, IonIcon, IonInput, IonItem,
+  IonItemDivider,
+  IonItemGroup,
+  IonItemOption,
+  IonItemOptions,
+  IonItemSliding,
+  IonLabel,
+  IonList,
   IonPage, IonRow, IonTitle, IonToolbar
 } from '@ionic/react';
+import { Swiper, SwiperSlide } from 'swiper/react';
 import { useEffect, useState } from 'react';
 import { useHistory, useLocation } from 'react-router';
-import { FlightRecord, NEW_FLIGHTRECORD, emptyFlightRecord } from '../interfaces/Interfaces';
-import { checkmark, close, ticketSharp } from 'ionicons/icons';
+import { Attachment, FlightRecord, NEW_FLIGHTRECORD, emptyFlightRecord } from '../interfaces/Interfaces';
+import { arrowUndo, camera, checkmark, close, document, ellipsisVertical, folderOpen, image, trash } from 'ionicons/icons';
 import { DBModel } from '../modules/db/DBModel';
 import { Toast } from '@capacitor/toast';
 import { v4 as uuidv4 } from 'uuid';
 import { getTimestamp, parseDateString } from '../modules/helpers/Helpers';
-import { Place, Route, flightTime, formatDuration, nightTime, routeDistance, sunrise, sunset } from '../modules/nighttime/Nighttime';
+import { Place, Route, formatDuration, nightTime } from '../modules/nighttime/Nighttime';
+import { FilePicker } from '@capawesome/capacitor-file-picker';
+import { Camera, CameraPlugin, CameraResultType, CameraSource, Photo } from '@capacitor/camera';
+
+// Import Swiper styles
+import 'swiper/css';
+
+import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
+import { FileOpener } from '@capawesome-team/capacitor-file-opener';
 
 const Flight: React.FC = () => {
 
@@ -19,7 +36,8 @@ const Flight: React.FC = () => {
 
   const location = useLocation();
   const [fr, setFlightRecord] = useState<FlightRecord>(emptyFlightRecord);
-
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
   /**
    * Returns the title for a flight record.
@@ -47,6 +65,7 @@ const Flight: React.FC = () => {
     if (state !== undefined) {
       setFlightRecord(state.fr);
       setTitle(getTitle(state.fr));
+      loadAttachments(state.fr.uuid);
     }
   }, [location.state])
 
@@ -160,7 +179,6 @@ const Flight: React.FC = () => {
 
   /**
    * Calculates the night time and the flight time for the flight record.
-   * @returns {Promise<void>} A promise that resolves when the night time and the flight time are calculated.
    */
   const calculateTimes = async (): Promise<void> => {
     const nt = await calculateNightTime();
@@ -169,12 +187,149 @@ const Flight: React.FC = () => {
     setFlightRecord({ ...fr, night_time: nt, total_time: ft });
   }
 
+  /**
+   * Loads the attachments for the flight record.
+   * @param uuid - The uuid of the flight record.
+   */
+  const loadAttachments = async (uuid: string): Promise<void> => {
+    const db = new DBModel();
+    await db.initDBConnection();
 
+    const res = await db.getAttachmentsList(uuid);
+
+    if (res instanceof Error) {
+      Toast.show({ text: `Cannot load attachments ${res.message}` });
+    } else {
+      setAttachments(res);
+    }
+  }
+
+  /**
+   * Adds an attachment to the flight record.
+   * @param filename - The name of the attachment.
+   * @param data - The data of the attachment.
+   */
+  const addAttachmet = async (filename: string, data: string): Promise<void> => {
+    const attachment: Attachment = {
+      uuid: uuidv4(),
+      record_id: fr.uuid,
+      document_name: filename,
+      document: atob(data),
+    }
+
+    const db = new DBModel();
+    await db.initDBConnection();
+    const res = await db.insertAttachment(attachment);
+
+    if (res instanceof Error) {
+      Toast.show({ text: `Cannot attach file ${res.message}` });
+    } else {
+      Toast.show({ text: `File ${filename} attached` });
+      await loadAttachments(fr.uuid);
+    }
+  }
+
+  /**
+   * Adds a file attachment to the flight record.
+   */
+  const addFileAttachment = async (): Promise<void> => {
+    try {
+      const result = await FilePicker.pickFiles({ multiple: false, readData: true });
+      const file = result.files[0];
+
+      await addAttachmet(file.name, file.data!);
+    } catch (err: any) {
+      if (err.message !== 'pickFiles canceled.') {
+        Toast.show({ text: `Cannot attach file ${err.message}` });
+      }
+    }
+  }
+
+  /**
+   * Adds an image attachment to the flight record.
+   */
+  const addImageAttachment = async (): Promise<void> => {
+    try {
+      const result = await FilePicker.pickImages({ multiple: false, readData: true });
+      const file = result.files[0];
+
+      await addAttachmet(file.name, file.data!);
+    } catch (err: any) {
+      if (err.message !== 'pickFiles canceled.') {
+        Toast.show({ text: `Cannot attach file ${err.message}` });
+      }
+    }
+  }
+
+  /**
+   * Adds a photo attachment to the flight record.
+   */
+  const addPhotoAttachment = async (): Promise<void> => {
+    try {
+      const image = await Camera.getPhoto({
+        resultType: CameraResultType.Base64,
+        quality: 100,
+        source: CameraSource.Camera,
+      });
+
+      await addAttachmet(`${fr.departure_place}-${fr.arrival_place}.${image.format}`, image.base64String!);
+    } catch (err: any) {
+      Toast.show({ text: `Cannot attach photo ${err.message}` });
+    }
+  }
+
+  /**
+   * Opens an attachment.
+   * @param uuid - The uuid of the attachment.
+   */
+  const openAttachment = async (uuid: string): Promise<void> => {
+    Toast.show({ text: `Opening attachment...` });
+
+    const db = new DBModel();
+    await db.initDBConnection();
+
+    const res = await db.getAttachment(uuid);
+
+    if (res instanceof Error) {
+      Toast.show({ text: `Cannot open attachment ${res.message}` });
+    } else {
+
+      try {
+        const file = await Filesystem.writeFile({
+          path: res.document_name,
+          data: btoa(res.document),
+          directory: Directory.Documents,
+        });
+
+        await FileOpener.openFile({ path: file.uri });
+      } catch (err: any) {
+        Toast.show({ text: `Cannot open attachment ${err.message}` });
+      }
+    }
+  }
+
+  /**
+   * Deletes an attachment.
+   * @param uuid - The uuid of the attachment.
+   */
+  const deleteAttachment = async (uuid: string): Promise<void> => {
+    const db = new DBModel();
+    await db.initDBConnection();
+
+    const res = await db.deleteAttachment(uuid);
+
+    if (res instanceof Error) {
+      Toast.show({ text: `Cannot delete attachment ${res.message}` });
+    } else {
+      await loadAttachments(fr.uuid);
+    }
+  }
 
   return (
     <IonPage>
       <IonHeader>
         <IonToolbar>
+
           <IonButtons slot="start">
             <IonBackButton defaultHref="#"></IonBackButton>
           </IonButtons>
@@ -182,222 +337,281 @@ const Flight: React.FC = () => {
             <IonButton onClick={saveFlightRecord}>
               <IonIcon slot="icon-only" icon={checkmark}></IonIcon>
             </IonButton>
-            {(fr.uuid !== NEW_FLIGHTRECORD) &&
-              <>
-                <IonButton id="confirm-delete">
-                  <IonIcon slot="icon-only" icon={close}></IonIcon>
-                </IonButton>
-                <IonAlert header="Delete flight record?" trigger="confirm-delete"
-                  message="Are you sure you want to delete this flight record?"
-                  buttons={[
-                    { text: 'Confirm', role: 'confirm', handler: deleteFlightRecord },
-                    { text: 'Cancel', role: 'cancel' },
-                  ]}></IonAlert>
-              </>
-            }
+
+            <IonButton id="flight-record-action-sheet">
+              <IonIcon slot="icon-only" icon={ellipsisVertical}></IonIcon>
+            </IonButton>
+
+            <IonActionSheet
+              trigger="flight-record-action-sheet"
+              header="Flight Record Actions"
+              buttons={(fr.uuid !== NEW_FLIGHTRECORD) && [
+                { text: 'Save', icon: checkmark, role: 'selected', handler: saveFlightRecord },
+                { text: 'Attach File', icon: document, handler: addFileAttachment },
+                { text: 'Attach Image', icon: image, handler: addImageAttachment },
+                { text: 'Take Photo', icon: camera, handler: addPhotoAttachment },
+                { text: 'Delete', icon: close, role: 'destructive', handler: () => { setShowConfirmDelete(true); } },
+                { text: 'Cancel', icon: arrowUndo, role: 'cancel', },
+              ] ||
+                [
+                  { text: 'Save', icon: checkmark, role: 'selected', handler: saveFlightRecord },
+                  { text: 'Cancel', icon: arrowUndo, role: 'cancel', },
+                ]}
+            ></IonActionSheet>
+
+            <IonAlert header="Delete flight record?"
+              message="Are you sure you want to delete this flight record?"
+              isOpen={showConfirmDelete}
+              onDidDismiss={() => setShowConfirmDelete(false)}
+              buttons={[
+                { text: 'Confirm', role: 'confirm', handler: deleteFlightRecord },
+                { text: 'Cancel', role: 'cancel' },
+              ]}>
+            </IonAlert>
+
           </IonButtons>
           <IonTitle>{title}</IonTitle>
         </IonToolbar>
       </IonHeader>
       <IonContent fullscreen>
-        <IonGrid>
 
-          <IonRow>
-            <IonCol>
-              <IonItem>
-                <IonInput label="Date" labelPlacement="stacked" placeholder="DD/MM/YYYY" value={fr.date}
-                  onIonInput={(e: any) => { setFlightRecord({ ...fr, date: e.target.value }) }}
-                  onIonChange={calculateTimes}>
-                </IonInput>
-              </IonItem>
-            </IonCol>
-            <IonCol>
-              <IonItem>
-                <IonInput label="Pilot in Command" labelPlacement="stacked" placeholder="Pilot in Command" value={fr.pic_name}
-                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, pic_name: 'Self' }) }}
-                  onIonInput={(e: any) => { setFlightRecord({ ...fr, pic_name: e.target.value }) }}>
-                </IonInput>
-              </IonItem>
-            </IonCol>
-          </IonRow>
+        <Swiper>
+          <SwiperSlide>
+            <IonGrid>
 
-          <IonRow>
-            <IonCol>
-              <IonItem>
-                <IonInput label="Departure Place" labelPlacement="stacked" placeholder="Departure Place" value={fr.departure_place}
-                  autocapitalize='characters'
-                  onIonInput={(e: any) => { setFlightRecord({ ...fr, departure_place: e.target.value }) }}
-                  onIonChange={calculateTimes}>
-                </IonInput>
-              </IonItem>
-            </IonCol>
-            <IonCol>
-              <IonItem>
-                <IonInput label="Departure Time" labelPlacement="stacked" placeholder="HHMM" value={fr.departure_time}
-                  maxlength={4}
-                  onIonInput={(e: any) => { setFlightRecord({ ...fr, departure_time: e.target.value }) }}
-                  onIonChange={calculateTimes}>
-                </IonInput>
-              </IonItem>
-            </IonCol>
-          </IonRow>
+              <IonRow>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="Date" labelPlacement="stacked" placeholder="DD/MM/YYYY" value={fr.date}
+                      onIonInput={(e: any) => { setFlightRecord({ ...fr, date: e.target.value }) }}
+                      onIonChange={calculateTimes}>
+                    </IonInput>
+                  </IonItem>
+                </IonCol>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="Pilot in Command" labelPlacement="stacked" placeholder="Pilot in Command" value={fr.pic_name}
+                      onDoubleClick={(e: any) => { setFlightRecord({ ...fr, pic_name: 'Self' }) }}
+                      onIonInput={(e: any) => { setFlightRecord({ ...fr, pic_name: e.target.value }) }}>
+                    </IonInput>
+                  </IonItem>
+                </IonCol>
+              </IonRow>
 
-          <IonRow>
-            <IonCol>
-              <IonItem>
-                <IonInput label="Arrival Place" labelPlacement="stacked" placeholder="Arrival Place" value={fr.arrival_place}
-                  autocapitalize='characters'
-                  onIonInput={(e: any) => { setFlightRecord({ ...fr, arrival_place: e.target.value }) }}
-                  onIonChange={calculateTimes}>
-                </IonInput>
-              </IonItem>
-            </IonCol>
-            <IonCol>
-              <IonItem>
-                <IonInput label="Arrival Time" labelPlacement="stacked" placeholder="HHMM" value={fr.arrival_time}
-                  maxlength={4}
-                  onIonInput={(e: any) => { setFlightRecord({ ...fr, arrival_time: e.target.value }) }}
-                  onIonChange={calculateTimes}>
-                </IonInput>
-              </IonItem>
-            </IonCol>
-          </IonRow>
+              <IonRow>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="Departure Place" labelPlacement="stacked" placeholder="Departure Place" value={fr.departure_place}
+                      autocapitalize='characters'
+                      onIonInput={(e: any) => { setFlightRecord({ ...fr, departure_place: e.target.value }) }}
+                      onIonChange={calculateTimes}>
+                    </IonInput>
+                  </IonItem>
+                </IonCol>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="Departure Time" labelPlacement="stacked" placeholder="HHMM" value={fr.departure_time}
+                      maxlength={4}
+                      onIonInput={(e: any) => { setFlightRecord({ ...fr, departure_time: e.target.value }) }}
+                      onIonChange={calculateTimes}>
+                    </IonInput>
+                  </IonItem>
+                </IonCol>
+              </IonRow>
 
-          <IonRow>
-            <IonCol>
-              <IonItem>
-                <IonInput label="Aircraft Model" labelPlacement="stacked" placeholder="Aircraft Model"
-                  value={fr.aircraft_model} onIonInput={(e: any) => { setFlightRecord({ ...fr, aircraft_model: e.target.value }) }}></IonInput>
-              </IonItem>
-            </IonCol>
-            <IonCol>
-              <IonItem>
-                <IonInput label="Aircraft Registration" labelPlacement="stacked" placeholder="Aircraft Registration"
-                  value={fr.reg_name} onIonInput={(e: any) => { setFlightRecord({ ...fr, reg_name: e.target.value }) }}></IonInput>
-              </IonItem>
-            </IonCol>
-          </IonRow>
+              <IonRow>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="Arrival Place" labelPlacement="stacked" placeholder="Arrival Place" value={fr.arrival_place}
+                      autocapitalize='characters'
+                      onIonInput={(e: any) => { setFlightRecord({ ...fr, arrival_place: e.target.value }) }}
+                      onIonChange={calculateTimes}>
+                    </IonInput>
+                  </IonItem>
+                </IonCol>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="Arrival Time" labelPlacement="stacked" placeholder="HHMM" value={fr.arrival_time}
+                      maxlength={4}
+                      onIonInput={(e: any) => { setFlightRecord({ ...fr, arrival_time: e.target.value }) }}
+                      onIonChange={calculateTimes}>
+                    </IonInput>
+                  </IonItem>
+                </IonCol>
+              </IonRow>
 
-          <IonRow>
-            <IonCol>
-              <IonItem>
-                <IonInput label="Total Time" labelPlacement="stacked" placeholder="HH:MM"
-                  value={fr.total_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, total_time: e.target.value }) }}></IonInput>
-              </IonItem>
-            </IonCol>
-            <IonCol>
-              <IonItem>
-                <IonInput label="Day" labelPlacement="stacked" placeholder="Day"
-                  value={fr.day_landings} onIonInput={(e: any) => { setFlightRecord({ ...fr, day_landings: e.target.value }) }}></IonInput>
-              </IonItem>
-            </IonCol>
-            <IonCol>
-              <IonItem>
-                <IonInput label="Night" labelPlacement="stacked" placeholder="Night"
-                  value={fr.night_landings} onIonInput={(e: any) => { setFlightRecord({ ...fr, night_landings: e.target.value }) }}></IonInput>
-              </IonItem>
-            </IonCol>
-          </IonRow>
+              <IonRow>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="Aircraft Model" labelPlacement="stacked" placeholder="Aircraft Model"
+                      value={fr.aircraft_model} onIonInput={(e: any) => { setFlightRecord({ ...fr, aircraft_model: e.target.value }) }}></IonInput>
+                  </IonItem>
+                </IonCol>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="Aircraft Registration" labelPlacement="stacked" placeholder="Aircraft Registration"
+                      value={fr.reg_name} onIonInput={(e: any) => { setFlightRecord({ ...fr, reg_name: e.target.value }) }}></IonInput>
+                  </IonItem>
+                </IonCol>
+              </IonRow>
 
-          <IonRow>
-            <IonCol>
-              <IonItem>
-                <IonInput label="SE" labelPlacement="stacked" placeholder="HH:MM"
-                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, se_time: fr.total_time }) }}
-                  value={fr.se_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, se_time: e.target.value }) }}></IonInput>
-              </IonItem>
-            </IonCol>
-            <IonCol>
-              <IonItem>
-                <IonInput label="ME" labelPlacement="stacked" placeholder="HH:MM"
-                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, me_time: fr.total_time }) }}
-                  value={fr.me_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, me_time: e.target.value }) }}></IonInput>
-              </IonItem>
-            </IonCol>
-            <IonCol>
-              <IonItem>
-                <IonInput label="MCC" labelPlacement="stacked" placeholder="HH:MM"
-                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, mcc_time: fr.total_time }) }}
-                  value={fr.mcc_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, mcc_time: e.target.value }) }}></IonInput>
-              </IonItem>
-            </IonCol>
-          </IonRow>
+              <IonRow>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="Total Time" labelPlacement="stacked" placeholder="HH:MM"
+                      value={fr.total_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, total_time: e.target.value }) }}></IonInput>
+                  </IonItem>
+                </IonCol>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="Day" labelPlacement="stacked" placeholder="Day"
+                      value={fr.day_landings} onIonInput={(e: any) => { setFlightRecord({ ...fr, day_landings: e.target.value }) }}></IonInput>
+                  </IonItem>
+                </IonCol>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="Night" labelPlacement="stacked" placeholder="Night"
+                      value={fr.night_landings} onIonInput={(e: any) => { setFlightRecord({ ...fr, night_landings: e.target.value }) }}></IonInput>
+                  </IonItem>
+                </IonCol>
+              </IonRow>
 
-          <IonRow>
-            <IonCol>
-              <IonItem>
-                <IonInput label="Night" labelPlacement="stacked" placeholder="HH:MM"
-                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, night_time: fr.total_time }) }}
-                  value={fr.night_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, night_time: e.target.value }) }}></IonInput>
-              </IonItem>
-            </IonCol>
-            <IonCol>
-              <IonItem>
-                <IonInput label="IFR" labelPlacement="stacked" placeholder="HH:MM"
-                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, ifr_time: fr.total_time }) }}
-                  value={fr.ifr_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, ifr_time: e.target.value }) }}></IonInput>
-              </IonItem>
-            </IonCol>
-            <IonCol>
-              <IonItem>
-                <IonInput label="PIC" labelPlacement="stacked" placeholder="HH:MM"
-                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, pic_time: fr.total_time }) }}
-                  value={fr.pic_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, pic_time: e.target.value }) }}></IonInput>
-              </IonItem>
-            </IonCol>
-          </IonRow>
+              <IonRow>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="SE" labelPlacement="stacked" placeholder="HH:MM"
+                      onDoubleClick={(e: any) => { setFlightRecord({ ...fr, se_time: fr.total_time }) }}
+                      value={fr.se_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, se_time: e.target.value }) }}></IonInput>
+                  </IonItem>
+                </IonCol>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="ME" labelPlacement="stacked" placeholder="HH:MM"
+                      onDoubleClick={(e: any) => { setFlightRecord({ ...fr, me_time: fr.total_time }) }}
+                      value={fr.me_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, me_time: e.target.value }) }}></IonInput>
+                  </IonItem>
+                </IonCol>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="MCC" labelPlacement="stacked" placeholder="HH:MM"
+                      onDoubleClick={(e: any) => { setFlightRecord({ ...fr, mcc_time: fr.total_time }) }}
+                      value={fr.mcc_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, mcc_time: e.target.value }) }}></IonInput>
+                  </IonItem>
+                </IonCol>
+              </IonRow>
 
-          <IonRow>
-            <IonCol>
-              <IonItem>
-                <IonInput label="Co Pilot" labelPlacement="stacked" placeholder="HH:MM"
-                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, co_pilot_time: fr.total_time }) }}
-                  value={fr.co_pilot_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, co_pilot_time: e.target.value }) }}></IonInput>
-              </IonItem>
-            </IonCol>
-            <IonCol>
-              <IonItem>
-                <IonInput label="Dual" labelPlacement="stacked" placeholder="HH:MM"
-                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, dual_time: fr.total_time }) }}
-                  value={fr.dual_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, dual_time: e.target.value }) }}></IonInput>
-              </IonItem>
-            </IonCol>
-            <IonCol>
-              <IonItem>
-                <IonInput label="Instr" labelPlacement="stacked" placeholder="HH:MM"
-                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, instructor_time: fr.total_time }) }}
-                  value={fr.instructor_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, instructor_time: e.target.value }) }}></IonInput>
-              </IonItem>
-            </IonCol>
-          </IonRow>
+              <IonRow>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="Night" labelPlacement="stacked" placeholder="HH:MM"
+                      onDoubleClick={(e: any) => { setFlightRecord({ ...fr, night_time: fr.total_time }) }}
+                      value={fr.night_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, night_time: e.target.value }) }}></IonInput>
+                  </IonItem>
+                </IonCol>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="IFR" labelPlacement="stacked" placeholder="HH:MM"
+                      onDoubleClick={(e: any) => { setFlightRecord({ ...fr, ifr_time: fr.total_time }) }}
+                      value={fr.ifr_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, ifr_time: e.target.value }) }}></IonInput>
+                  </IonItem>
+                </IonCol>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="PIC" labelPlacement="stacked" placeholder="HH:MM"
+                      onDoubleClick={(e: any) => { setFlightRecord({ ...fr, pic_time: fr.total_time }) }}
+                      value={fr.pic_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, pic_time: e.target.value }) }}></IonInput>
+                  </IonItem>
+                </IonCol>
+              </IonRow>
 
-          <IonRow>
-            <IonCol>
-              <IonItem>
-                <IonInput label="Sim Type" labelPlacement="stacked" placeholder="Simulator Type"
-                  value={fr.sim_type} onIonInput={(e: any) => { setFlightRecord({ ...fr, sim_type: e.target.value }) }}></IonInput>
-              </IonItem>
-            </IonCol>
-            <IonCol>
-              <IonItem>
-                <IonInput label="Sim Time" labelPlacement="stacked" placeholder="HH:MM"
-                  onDoubleClick={(e: any) => { setFlightRecord({ ...fr, sim_time: fr.total_time }) }}
-                  value={fr.sim_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, sim_time: e.target.value }) }}></IonInput>
-              </IonItem>
-            </IonCol>
-          </IonRow>
+              <IonRow>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="Co Pilot" labelPlacement="stacked" placeholder="HH:MM"
+                      onDoubleClick={(e: any) => { setFlightRecord({ ...fr, co_pilot_time: fr.total_time }) }}
+                      value={fr.co_pilot_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, co_pilot_time: e.target.value }) }}></IonInput>
+                  </IonItem>
+                </IonCol>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="Dual" labelPlacement="stacked" placeholder="HH:MM"
+                      onDoubleClick={(e: any) => { setFlightRecord({ ...fr, dual_time: fr.total_time }) }}
+                      value={fr.dual_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, dual_time: e.target.value }) }}></IonInput>
+                  </IonItem>
+                </IonCol>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="Instr" labelPlacement="stacked" placeholder="HH:MM"
+                      onDoubleClick={(e: any) => { setFlightRecord({ ...fr, instructor_time: fr.total_time }) }}
+                      value={fr.instructor_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, instructor_time: e.target.value }) }}></IonInput>
+                  </IonItem>
+                </IonCol>
+              </IonRow>
 
-          <IonRow>
-            <IonCol>
-              <IonItem>
-                <IonInput label="Remarks" labelPlacement="stacked" placeholder="Remarks"
-                  value={fr.remarks} onIonInput={(e: any) => { setFlightRecord({ ...fr, remarks: e.target.value }) }}></IonInput>
-              </IonItem>
-            </IonCol>
+              <IonRow>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="Sim Type" labelPlacement="stacked" placeholder="Simulator Type"
+                      value={fr.sim_type} onIonInput={(e: any) => { setFlightRecord({ ...fr, sim_type: e.target.value }) }}></IonInput>
+                  </IonItem>
+                </IonCol>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="Sim Time" labelPlacement="stacked" placeholder="HH:MM"
+                      onDoubleClick={(e: any) => { setFlightRecord({ ...fr, sim_time: fr.total_time }) }}
+                      value={fr.sim_time} onIonInput={(e: any) => { setFlightRecord({ ...fr, sim_time: e.target.value }) }}></IonInput>
+                  </IonItem>
+                </IonCol>
+              </IonRow>
 
-          </IonRow>
-        </IonGrid>
+              <IonRow>
+                <IonCol>
+                  <IonItem>
+                    <IonInput label="Remarks" labelPlacement="stacked" placeholder="Remarks"
+                      value={fr.remarks} onIonInput={(e: any) => { setFlightRecord({ ...fr, remarks: e.target.value }) }}></IonInput>
+                  </IonItem>
+                </IonCol>
 
+              </IonRow>
+            </IonGrid>
+          </SwiperSlide>
+
+
+          <SwiperSlide>
+            <IonList>
+
+              {(attachments.length === 0) &&
+                <>
+                  <IonItem>
+                    <IonLabel class='ion-text-center'>No attachments</IonLabel>
+                  </IonItem>
+                </>
+              }
+
+              {attachments.map((attachment: Attachment, index: number) => {
+                return (
+                  <IonItemSliding key={index}>
+                    <IonItem key={index} onClick={() => openAttachment(attachment.uuid)}>
+                      {(attachment.document_name.endsWith('.jpg') ||
+                        attachment.document_name.endsWith('.jpeg') ||
+                        attachment.document_name.endsWith('.png')) &&
+                        <IonIcon slot="start" icon={image}></IonIcon> ||
+                        <IonIcon slot="start" icon={document}></IonIcon>
+                      }
+                      <IonLabel>{attachment.document_name}</IonLabel>
+                    </IonItem>
+                    <IonItemOptions slot="end">
+                      <IonItemOption color="danger" onClick={() => deleteAttachment(attachment.uuid)}>
+                        <IonIcon slot="icon-only" icon={trash}></IonIcon>
+                      </IonItemOption>
+                    </IonItemOptions>
+                  </IonItemSliding>
+                )
+              })}
+
+            </IonList>
+          </SwiperSlide>
+        </Swiper>
       </IonContent>
     </IonPage >
   );

@@ -1,6 +1,6 @@
 
 import { sqlite } from "../../../App";
-import { Airport, Convert, DeletedItem, FlightRecord } from "../../interfaces/Interfaces";
+import { Airport, Attachment, Convert, DeletedItem, FlightRecord } from "../../interfaces/Interfaces";
 import { DB_STRUCTURE } from "./Structure";
 import { getTimestamp } from "../helpers/Helpers";
 import { Toast } from "@capacitor/toast";
@@ -200,12 +200,18 @@ export class DBModel {
      */
     async deleteFlightRecord(uuid: string, isSync = true): Promise<void | Error> {
         try {
+            // delete flight record
             await this.db.query('DELETE FROM logbook WHERE uuid = ?', [uuid]);
 
+            // add deleted item to the deleted_items table
             if (isSync) {
                 const query = `INSERT INTO deleted_items (uuid, table_name, delete_time) VALUES (?, ?, ?)`;
                 await this.db.query(query, [uuid, 'logbook', (getTimestamp).toString()]);
             }
+
+            // delete attachments
+            await this.db.query('DELETE FROM attachments WHERE record_id = ?', [uuid]);
+
             return;
         } catch (err: any) {
             return err as Error;
@@ -340,5 +346,55 @@ export class DBModel {
         return;
     }
 
+    ////////////////////////////////////////////////////////////////////////////
+    // Attachments functions
+    ////////////////////////////////////////////////////////////////////////////
+
+    async insertAttachment(att: Attachment): Promise<void | Error> {
+        const query = `INSERT INTO attachments (uuid, record_id, document_name, document)
+            VALUES (?, ?, ?, ?)`;
+        try {
+            const res = await this.db.query(query, [att.uuid, att.record_id, att.document_name, att.document]);
+            return
+        } catch (err: any) {
+            return err as Error;
+        }
+    }
+
+    async getAttachmentsList(record_id: string): Promise<Attachment[] | Error> {
+        let attachments: Attachment[] = [];
+
+        try {
+            const query = 'SELECT uuid, record_id, document_name, "" AS document FROM attachments WHERE record_id = ?';
+            const res = await this.db.query(query, [record_id]);
+
+            for (let i = 0; i < res.values!.length; i++) {
+                const att = Convert.toAttachment(JSON.stringify(res.values![i]));
+                attachments.push(att);
+            }
+
+            return attachments;
+        } catch (err: any) {
+            return err as Error;
+        }
+    }
+
+    async getAttachment(uuid: string): Promise<Attachment | Error> {
+        const res = await this.db.query('SELECT uuid, record_id, document_name, document FROM attachments WHERE uuid = ?', [uuid]);
+        if (res.values!.length === 0) {
+            return new Error('No such attachment');
+        } else {
+            return Convert.toAttachment(JSON.stringify(res.values![0]));
+        }
+    }
+
+    async deleteAttachment(uuid: string): Promise<void | Error> {
+        try {
+            await this.db.query('DELETE FROM attachments WHERE uuid = ?', [uuid]);
+            return;
+        } catch (err: any) {
+            return err as Error;
+        }
+    }
 };
 

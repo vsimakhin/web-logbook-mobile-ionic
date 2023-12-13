@@ -1,6 +1,6 @@
 {
-  "short_name": "Ionic App",
-  "name": "My Ionic App",
+  "short_name": "Logbook",
+  "name": "Web Logbook Mobile",
   "icons": [
     {
       "src": "assets/icon/favicon.png",

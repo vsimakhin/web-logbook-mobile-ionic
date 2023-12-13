@@ -103,6 +103,17 @@ export interface Airport {
     lon: number;
 }
 
+/**
+ * Represents an attachment
+ */
+export interface Attachment {
+    uuid: string;
+    document: string;
+    document_name: string;
+    record_id: string;
+}
+
+
 // https://app.quicktype.io/
 export class Convert {
     public static toFlightRecord(json: string): FlightRecord {
@@ -171,6 +182,14 @@ export class Convert {
 
     public static airportToJson(value: Airport): string {
         return JSON.stringify(uncast(value, r("Airport")), null, 2);
+    }
+
+    public static toAttachment(json: string): Attachment {
+        return cast(JSON.parse(json), r("Attachment"));
+    }
+
+    public static attachmentToJson(value: Attachment): string {
+        return JSON.stringify(uncast(value, r("Attachment")), null, 2);
     }
 }
 
@@ -369,5 +388,11 @@ const typeMap: any = {
         { json: "lat", js: "lat", typ: 3.14 },
         { json: "lon", js: "lon", typ: 3.14 },
         { json: "name", js: "name", typ: "" },
+    ], false),
+    "Attachment": o([
+        { json: "document", js: "document", typ: "" },
+        { json: "document_name", js: "document_name", typ: "" },
+        { json: "record_id", js: "record_id", typ: "" },
+        { json: "uuid", js: "uuid", typ: "" },
     ], false),
 };
