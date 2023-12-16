@@ -214,7 +214,7 @@ const Flight: React.FC = () => {
       uuid: uuidv4(),
       record_id: fr.uuid,
       document_name: filename,
-      document: atob(data),
+      document: data,
     }
 
     const db = new DBModel();
@@ -297,7 +297,7 @@ const Flight: React.FC = () => {
       try {
         const file = await Filesystem.writeFile({
           path: res.document_name,
-          data: btoa(res.document),
+          data: res.document,
           directory: Directory.Documents,
         });
 

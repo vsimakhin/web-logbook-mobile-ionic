@@ -73,6 +73,9 @@ const Settings: React.FC = () => {
     await Toast.show({ text: `Synchronizing flight records...` });
     await sync.updateFlightRecords();
 
+    await Toast.show({ text: `Synchronizing attachments...` });
+    await sync.updateAttachments();
+
     await getRecordsCount();
 
     await Toast.show({ text: `Synchronization completed` });

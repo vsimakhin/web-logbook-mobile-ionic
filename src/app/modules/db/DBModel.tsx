@@ -227,33 +227,26 @@ export class DBModel {
      * @param fr - flight record to sync
      * @returns amount of updated/inserted records (0 or 1), or error if occurs
      */
-    async syncFlightRecords(fr: FlightRecord): Promise<number | Error> {
+    async syncFlightRecords(fr: FlightRecord): Promise<void | Error> {
         const res = await this.db.query('SELECT * FROM logbook_view WHERE uuid = ?', [fr.uuid]);
         if (res.values!.length === 0) {
             // no such uuid in the db, add new flight record
             const insert = await this.insertFlightRecord(fr);
             if (insert instanceof Error) {
                 return insert;
-            } else {
-                return 1;
             }
         } else {
             // local flight record exists, let's compare update_time
             const lfr = Convert.toFlightRecord(JSON.stringify(res.values![0]));
             if (res.values![0].update_time < fr.update_time) {
-                console.log(lfr.update_time, fr.update_time);
                 const res = await this.updateFlightRecord(fr);
                 if (res instanceof Error) {
                     return res;
-                } else {
-                    return 1;
                 }
-            } else {
-                return 0;
             }
         }
-
     }
+
 
     /**
      * Synchronizes deleted items from the main application
@@ -350,17 +343,29 @@ export class DBModel {
     // Attachments functions
     ////////////////////////////////////////////////////////////////////////////
 
+
+    /**
+     * Inserts an attachment into the database.
+     * @param att - The attachment to be inserted.
+     * @returns A promise that resolves with void if the insertion is successful, or an Error object if an error occurs.
+     */
     async insertAttachment(att: Attachment): Promise<void | Error> {
         const query = `INSERT INTO attachments (uuid, record_id, document_name, document)
             VALUES (?, ?, ?, ?)`;
         try {
             const res = await this.db.query(query, [att.uuid, att.record_id, att.document_name, att.document]);
-            return
+            return;
         } catch (err: any) {
             return err as Error;
         }
     }
 
+
+    /**
+     * Retrieves a list of attachments for a given record ID.
+     * @param record_id - The ID of the record.
+     * @returns A promise that resolves to an array of Attachment objects or an Error object.
+     */
     async getAttachmentsList(record_id: string): Promise<Attachment[] | Error> {
         let attachments: Attachment[] = [];
 
@@ -379,6 +384,34 @@ export class DBModel {
         }
     }
 
+
+    /**
+     * Retrieves a list of all attachments from the database.
+     * @returns A promise that resolves to an array of Attachment objects or an Error object.
+     */
+    async getAllAttachmentsList(): Promise<Attachment[] | Error> {
+        let attachments: Attachment[] = [];
+
+        try {
+            const query = 'SELECT uuid, record_id, document_name, "" AS document FROM attachments';
+            const res = await this.db.query(query);
+
+            for (let i = 0; i < res.values!.length; i++) {
+                const att = Convert.toAttachment(JSON.stringify(res.values![i]));
+                attachments.push(att);
+            }
+
+            return attachments;
+        } catch (err: any) {
+            return err as Error;
+        }
+    }
+
+    /**
+     * Retrieves an attachment from the database based on its UUID.
+     * @param uuid - The UUID of the attachment to retrieve.
+     * @returns A Promise that resolves to the retrieved Attachment object, or an Error if the attachment does not exist.
+     */
     async getAttachment(uuid: string): Promise<Attachment | Error> {
         const res = await this.db.query('SELECT uuid, record_id, document_name, document FROM attachments WHERE uuid = ?', [uuid]);
         if (res.values!.length === 0) {
@@ -388,9 +421,21 @@ export class DBModel {
         }
     }
 
-    async deleteAttachment(uuid: string): Promise<void | Error> {
+    /**
+     * Deletes an attachment from the database.
+     * @param uuid - The UUID of the attachment to be deleted.
+     * @param isSync - Whether or not to synchronize the deletion with the main app.
+     * @returns A promise that resolves with void if the deletion is successful, or an Error if there is an error.
+     */
+    async deleteAttachment(uuid: string, isSync = true): Promise<void | Error> {
         try {
             await this.db.query('DELETE FROM attachments WHERE uuid = ?', [uuid]);
+
+            // add deleted item to the deleted_items table
+            if (isSync) {
+                const query = `INSERT INTO deleted_items (uuid, table_name, delete_time) VALUES (?, ?, ?)`;
+                await this.db.query(query, [uuid, 'attachments', (getTimestamp).toString()]);
+            }
             return;
         } catch (err: any) {
             return err as Error;

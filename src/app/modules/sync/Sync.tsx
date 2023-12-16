@@ -1,4 +1,4 @@
-import { AppSettings, Convert, Airport } from '../../interfaces/Interfaces';
+import { AppSettings, Convert, Airport, Attachment } from '../../interfaces/Interfaces';
 import { Toast } from '@capacitor/toast';
 import { DBModel } from '../db/DBModel';
 
@@ -12,6 +12,7 @@ export class Sync {
     private SYNC_FLIGHT_RECORDS = '/sync/flightrecords';
     private SYNC_DELETED = '/sync/deleted';
     private SYNC_AIRPORTS = '/sync/airports';
+    private SYNC_ATTACHMENTS = '/sync/attachments';
 
     constructor(settings: AppSettings) {
         this.settings = settings;
@@ -81,6 +82,54 @@ export class Sync {
         const payload = { 'flight_records': frs };
         if (frs.length !== 0) {
             const res = await this.post(this.getURL(this.SYNC_FLIGHT_RECORDS), payload);
+        }
+    }
+
+    async updateAttachments(): Promise<void> {
+        const db = new DBModel();
+        await db.initDBConnection();
+
+        // get list of attachments from the main app
+        const attachments = await this.get(this.getURL(`${this.SYNC_ATTACHMENTS}/all`));
+        if (attachments === null) {
+            return;
+        }
+
+        // convert json to Attachment[]
+        let mainAppAtts: Attachment[] = [];
+        for (let i = 0; i < attachments.length; i++) {
+            const att = Convert.toAttachment(JSON.stringify(attachments[i]));
+            mainAppAtts.push(att);
+        }
+
+        // get list of attachments from the local database
+        const localAtts = await db.getAllAttachmentsList();
+        if (localAtts instanceof Error) {
+            return;
+        }
+
+        // find attachments that are not in the local app
+        for (let i = 0; i < mainAppAtts.length; i++) {
+            const att = mainAppAtts[i];
+            const index = localAtts.findIndex(a => a.uuid === att.uuid);
+            if (index === -1) {
+                // download attachment from the main app
+                const rawAtt = await this.get(this.getURL(`${this.SYNC_ATTACHMENTS}/${att.uuid}`));
+                if (rawAtt !== null) {
+                    await db.insertAttachment(Convert.toAttachment(JSON.stringify(rawAtt)));
+                }
+            }
+        }
+
+        // find attachments that are not in the main app
+        for (let i = 0; i < localAtts.length; i++) {
+            const att = localAtts[i];
+            const index = mainAppAtts.findIndex(a => a.uuid === att.uuid);
+            if (index === -1) {
+                // upload attachment to the main app
+                const uploadAtt = await db.getAttachment(att.uuid);
+                await this.post(this.getURL(`${this.SYNC_ATTACHMENTS}/upload`), uploadAtt);
+            }
         }
     }
 
