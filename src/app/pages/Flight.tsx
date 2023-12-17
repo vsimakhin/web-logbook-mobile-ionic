@@ -569,41 +569,44 @@ const Flight: React.FC = () => {
             </IonGrid>
           </SwiperSlide>
 
+          {(fr.uuid !== NEW_FLIGHTRECORD) &&
+            <>
+              <SwiperSlide>
+                <IonList>
 
-          <SwiperSlide>
-            <IonList>
+                  {(attachments.length === 0) &&
+                    <>
+                      <IonItem>
+                        <IonLabel class='ion-text-center'>No attachments</IonLabel>
+                      </IonItem>
+                    </>
+                  }
 
-              {(attachments.length === 0) &&
-                <>
-                  <IonItem>
-                    <IonLabel class='ion-text-center'>No attachments</IonLabel>
-                  </IonItem>
-                </>
-              }
+                  {attachments.map((attachment: Attachment, index: number) => {
+                    return (
+                      <IonItemSliding key={index}>
+                        <IonItem key={index} onClick={() => openAttachment(attachment.uuid)}>
+                          {(attachment.document_name.endsWith('.jpg') ||
+                            attachment.document_name.endsWith('.jpeg') ||
+                            attachment.document_name.endsWith('.png')) &&
+                            <IonIcon slot="start" icon={image}></IonIcon> ||
+                            <IonIcon slot="start" icon={document}></IonIcon>
+                          }
+                          <IonLabel>{attachment.document_name}</IonLabel>
+                        </IonItem>
+                        <IonItemOptions slot="end">
+                          <IonItemOption color="danger" onClick={() => deleteAttachment(attachment.uuid)}>
+                            <IonIcon slot="icon-only" icon={trash}></IonIcon>
+                          </IonItemOption>
+                        </IonItemOptions>
+                      </IonItemSliding>
+                    )
+                  })}
 
-              {attachments.map((attachment: Attachment, index: number) => {
-                return (
-                  <IonItemSliding key={index}>
-                    <IonItem key={index} onClick={() => openAttachment(attachment.uuid)}>
-                      {(attachment.document_name.endsWith('.jpg') ||
-                        attachment.document_name.endsWith('.jpeg') ||
-                        attachment.document_name.endsWith('.png')) &&
-                        <IonIcon slot="start" icon={image}></IonIcon> ||
-                        <IonIcon slot="start" icon={document}></IonIcon>
-                      }
-                      <IonLabel>{attachment.document_name}</IonLabel>
-                    </IonItem>
-                    <IonItemOptions slot="end">
-                      <IonItemOption color="danger" onClick={() => deleteAttachment(attachment.uuid)}>
-                        <IonIcon slot="icon-only" icon={trash}></IonIcon>
-                      </IonItemOption>
-                    </IonItemOptions>
-                  </IonItemSliding>
-                )
-              })}
-
-            </IonList>
-          </SwiperSlide>
+                </IonList>
+              </SwiperSlide>
+            </>
+          }
         </Swiper>
       </IonContent>
     </IonPage >
