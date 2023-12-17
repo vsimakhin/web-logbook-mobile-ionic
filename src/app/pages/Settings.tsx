@@ -1,6 +1,7 @@
 import {
   IonButton, IonCheckbox, IonContent, IonHeader, IonIcon, IonInput, IonItem,
-  IonItemDivider, IonItemGroup, IonLabel, IonList, IonPage, IonProgressBar, IonTitle, IonToolbar, useIonViewDidEnter,
+  IonItemDivider, IonItemGroup, IonLabel, IonList, IonPage, IonProgressBar,
+  IonTitle, IonToolbar, useIonViewDidEnter,
 } from '@ionic/react';
 import { airplane, build, paw, personCircle, reorderFour, server } from 'ionicons/icons';
 import { Preferences } from '@capacitor/preferences';

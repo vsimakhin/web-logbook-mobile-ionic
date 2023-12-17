@@ -1,28 +1,21 @@
 import {
-  IonActionSheet,
-  IonAlert,
-  IonBackButton, IonButton, IonButtons, IonCol, IonContent, IonGrid, IonHeader, IonIcon, IonInput, IonItem,
-  IonItemDivider,
-  IonItemGroup,
-  IonItemOption,
-  IonItemOptions,
-  IonItemSliding,
-  IonLabel,
-  IonList,
+  IonActionSheet, IonAlert, IonBackButton, IonButton, IonButtons, IonCol,
+  IonContent, IonGrid, IonHeader, IonIcon, IonInput, IonItem, IonItemOption,
+  IonItemOptions, IonItemSliding, IonLabel, IonList,
   IonPage, IonRow, IonTitle, IonToolbar
 } from '@ionic/react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { useEffect, useState } from 'react';
 import { useHistory, useLocation } from 'react-router';
 import { Attachment, FlightRecord, NEW_FLIGHTRECORD, emptyFlightRecord } from '../interfaces/Interfaces';
-import { arrowUndo, camera, checkmark, close, document, ellipsisVertical, folderOpen, image, trash } from 'ionicons/icons';
+import { arrowUndo, camera, checkmark, close, document, ellipsisVertical, image, trash } from 'ionicons/icons';
 import { DBModel } from '../modules/db/DBModel';
 import { Toast } from '@capacitor/toast';
 import { v4 as uuidv4 } from 'uuid';
 import { getTimestamp, parseDateString } from '../modules/helpers/Helpers';
 import { Place, Route, formatDuration, nightTime } from '../modules/nighttime/Nighttime';
 import { FilePicker } from '@capawesome/capacitor-file-picker';
-import { Camera, CameraPlugin, CameraResultType, CameraSource, Photo } from '@capacitor/camera';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 
 // Import Swiper styles
 import 'swiper/css';

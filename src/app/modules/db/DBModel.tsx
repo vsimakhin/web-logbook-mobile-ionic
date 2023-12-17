@@ -1,4 +1,3 @@
-
 import { sqlite } from "../../../App";
 import { Airport, Attachment, Convert, DeletedItem, FlightRecord } from "../../interfaces/Interfaces";
 import { DB_STRUCTURE } from "./Structure";
