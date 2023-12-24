@@ -10,7 +10,7 @@ import {
   setupIonicReact
 } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
-import { airplane, barChart, cog } from 'ionicons/icons';
+import { airplane, barChart, cog, documents } from 'ionicons/icons';
 
 import { SQLiteHook, useSQLite } from 'react-sqlite-hook';
 
@@ -38,6 +38,7 @@ import FlightRecords from './app/pages/FlightRecords';
 import Stats from './app/pages/Stats';
 import Settings from './app/pages/Settings';
 import Flight from './app/pages/Flight';
+import Licensing from './app/pages/Licensing';
 
 setupIonicReact();
 
@@ -67,12 +68,19 @@ const App: React.FC = () => {
             <Route exact path="/flight">
               <Flight />
             </Route>
+            <Route exact path="/licensing">
+              <Licensing />
+            </Route>
           </IonRouterOutlet>
 
           <IonTabBar slot="bottom">
             <IonTabButton tab="flightrecords" href="/flightrecords">
               <IonIcon aria-hidden="true" icon={airplane} />
               <IonLabel>Flight Records</IonLabel>
+            </IonTabButton>
+            <IonTabButton tab="licensing" href="/licensing">
+              <IonIcon aria-hidden="true" icon={documents} />
+              <IonLabel>Licensing</IonLabel>
             </IonTabButton>
             <IonTabButton tab="stats" href="/stats">
               <IonIcon aria-hidden="true" icon={barChart} />

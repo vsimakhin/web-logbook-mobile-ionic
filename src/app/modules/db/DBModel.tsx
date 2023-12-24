@@ -1,11 +1,11 @@
 import { sqlite } from "../../../App";
-import { Airport, Attachment, Convert, DeletedItem, FlightRecord } from "../../interfaces/Interfaces";
+import { Airport, Attachment, Convert, DeletedItem, FlightRecord, License } from "../../interfaces/Interfaces";
 import { DB_STRUCTURE } from "./Structure";
 import { getTimestamp } from "../helpers/Helpers";
 import { Toast } from "@capacitor/toast";
 
 const DBNAME = 'weblogbook.db';
-const DBVERSION = 1;
+const DBVERSION = 3;
 
 export class DBModel {
     db: any;
@@ -246,6 +246,25 @@ export class DBModel {
         }
     }
 
+    async syncLicense(lic: License): Promise<void | Error> {
+        const res = await this.db.query('SELECT * FROM licensing WHERE uuid = ?', [lic.uuid]);
+        if (res.values!.length === 0) {
+            // no such uuid in the db, add new 
+            const insert = await this.insertLicense(lic);
+            if (insert instanceof Error) {
+                return insert;
+            }
+        } else {
+            // local license exists, let's compare update_time
+            const llic = Convert.toLicense(JSON.stringify(res.values![0]));
+            if (res.values![0].update_time < lic.update_time) {
+                const res = await this.updateLicense(lic);
+                if (res instanceof Error) {
+                    return res;
+                }
+            }
+        }
+    }
 
     /**
      * Synchronizes deleted items from the main application
@@ -435,6 +454,89 @@ export class DBModel {
                 const query = `INSERT INTO deleted_items (uuid, table_name, delete_time) VALUES (?, ?, ?)`;
                 await this.db.query(query, [uuid, 'attachments', (getTimestamp).toString()]);
             }
+            return;
+        } catch (err: any) {
+            return err as Error;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Licenses functions
+    ////////////////////////////////////////////////////////////////////////////
+    /**
+     * Returns a number of licenses in the database.
+     */
+    async getLicensesCount(): Promise<number> {
+        const res = await this.db.query('SELECT COUNT(uuid) AS count FROM licensing');
+        return res.values![0].count;
+    }
+
+    async getLicenses(): Promise<License[] | Error> {
+        let lics: License[] = [];
+
+        try {
+            const query = 'SELECT * FROM licensing ORDER BY category, name';
+            const res = await this.db.query(query);
+
+            for (let i = 0; i < res.values!.length; i++) {
+                const lic = Convert.toLicense(JSON.stringify(res.values![i]));
+                lics.push(lic);
+            }
+
+            return lics;
+        } catch (err: any) {
+            return err as Error;
+        }
+    }
+
+    async insertLicense(lic: License): Promise<void | Error> {
+        if (lic.update_time === 0) {
+            lic.update_time = getTimestamp();
+        }
+
+        const query = `INSERT INTO licensing 
+            (uuid, category, name, number, issued, valid_from, valid_until, document_name, document, remarks, update_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
+        try {
+            const res = await this.db.query(query, [lic.uuid, lic.category, lic.name, lic.number, lic.issued,
+            lic.valid_from, lic.valid_until, lic.document_name, lic.document, lic.remarks, lic.update_time]);
+
+            return
+        } catch (err: any) {
+            return err as Error;
+        }
+    }
+
+    async updateLicense(lic: License): Promise<void | Error> {
+        if (lic.update_time === 0) {
+            lic.update_time = getTimestamp();
+        }
+
+        const query = `UPDATE licensing SET
+		    category = ?, name = ?, number = ?, issued = ?, valid_from = ?, valid_until = ?, document_name = ?, 
+            document = ?, remarks = ?, update_time = ? WHERE uuid = ?`;
+        try {
+            await this.db.query(query, [lic.category, lic.name, lic.number, lic.issued,
+            lic.valid_from, lic.valid_until, lic.document_name, lic.document, lic.remarks, lic.update_time, lic.uuid]);
+
+            return;
+        } catch (err: any) {
+            return err as Error;
+        }
+
+    }
+
+    async deleteLicense(uuid: string, isSync = true): Promise<void | Error> {
+        try {
+            // delete license
+            await this.db.query('DELETE FROM licensing WHERE uuid = ?', [uuid]);
+
+            // add deleted item to the deleted_items table
+            if (isSync) {
+                const query = `INSERT INTO deleted_items (uuid, table_name, delete_time) VALUES (?, ?, ?)`;
+                await this.db.query(query, [uuid, 'licensing', (getTimestamp).toString()]);
+            }
+
             return;
         } catch (err: any) {
             return err as Error;

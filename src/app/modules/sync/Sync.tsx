@@ -1,4 +1,4 @@
-import { AppSettings, Convert, Airport, Attachment } from '../../interfaces/Interfaces';
+import { AppSettings, Convert, Airport, Attachment, FlightRecord } from '../../interfaces/Interfaces';
 import { Toast } from '@capacitor/toast';
 import { DBModel } from '../db/DBModel';
 
@@ -13,6 +13,7 @@ export class Sync {
     private SYNC_DELETED = '/sync/deleted';
     private SYNC_AIRPORTS = '/sync/airports';
     private SYNC_ATTACHMENTS = '/sync/attachments';
+    private SYNC_LICENSES = '/sync/licensing';
 
     constructor(settings: AppSettings) {
         this.settings = settings;
@@ -68,12 +69,43 @@ export class Sync {
             return
         }
 
+        // convert json to FlightRecord[]
+        let mainAppFlightRecords: FlightRecord[] = [];
         for (let i = 0; i < frs.length; i++) {
             const fr = Convert.toFlightRecord(JSON.stringify(frs[i]));
+            mainAppFlightRecords.push(fr);
+        }
 
-            const res = await db.syncFlightRecords(fr);
-            if (res instanceof Error) {
-                return;
+        // get flight records from the local database
+        const localFlightRecords = await db.getFlightRecords();
+        if (localFlightRecords instanceof Error) {
+            return;
+        }
+
+        // iterate through main app flight records
+        for (let i = 0; i < mainAppFlightRecords.length; i++) {
+            const fr = mainAppFlightRecords[i];
+
+            // find flight record in the local database
+            const index = localFlightRecords.findIndex(f => f.uuid === fr.uuid);
+            if (index === -1) {
+                // insert flight record into the local database
+                console.log("new", fr)
+                const res = await db.insertFlightRecord(fr);
+                if (res instanceof Error) {
+                    return;
+                }
+            } else {
+                // check update time
+                const localFR = localFlightRecords[index];
+                if (localFR.update_time < fr.update_time) {
+                    // update flight record in the local database
+                    console.log("update", fr)
+                    const res = await db.updateFlightRecord(fr);
+                    if (res instanceof Error) {
+                        return;
+                    }
+                }
             }
         }
 
@@ -190,6 +222,34 @@ export class Sync {
         const res = await db.updateAirportsDB(airports);
         if (res instanceof Error) {
             await Toast.show({ text: `Error updating airports database` });
+        }
+    }
+
+    async updateLicenses(): Promise<void> {
+        const db = new DBModel();
+        await db.initDBConnection();
+
+        // download licenses from the main app
+        let lics = await this.get(this.getURL(this.SYNC_LICENSES));
+        if (lics === null) {
+            return
+        }
+
+        for (let i = 0; i < lics.length; i++) {
+
+            const lic = Convert.toLicense(JSON.stringify(lics[i]));
+
+            const res = await db.syncLicense(lic);
+            if (res instanceof Error) {
+                return;
+            }
+        }
+
+        // upload flight records to the main app
+        lics = await db.getLicenses();
+        const payload = { 'licenses': lics };
+        if (lics.length !== 0) {
+            const res = await this.post(this.getURL(this.SYNC_LICENSES), payload);
         }
     }
 

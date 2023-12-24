@@ -76,5 +76,19 @@ CREATE TABLE IF NOT EXISTS deleted_items (
     delete_time TEXT NOT NULL
 );
 
-PRAGMA user_version = 1;
+CREATE TABLE IF NOT EXISTS licensing (
+    uuid TEXT PRIMARY_KEY,
+    category TEXT,
+    name TEXT,
+    number TEXT,
+    issued TEXT,
+    valid_from TEXT,
+    valid_until TEXT,
+    document_name TEXT,
+    document BLOB,
+    remarks TEXT,
+    update_time INTEGER
+);
+
+PRAGMA user_version = 3;
 `;

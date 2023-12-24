@@ -3,7 +3,7 @@ import {
   IonItemDivider, IonItemGroup, IonLabel, IonList, IonPage, IonProgressBar,
   IonTitle, IonToolbar, useIonViewDidEnter,
 } from '@ionic/react';
-import { airplane, build, paw, personCircle, reorderFour, server } from 'ionicons/icons';
+import { airplane, build, documents, paw, personCircle, reorderFour, server } from 'ionicons/icons';
 import { Preferences } from '@capacitor/preferences';
 import { useEffect, useState } from 'react';
 import { AppSettings } from '../interfaces/Interfaces';
@@ -23,8 +23,9 @@ const Settings: React.FC = () => {
   });
 
   const [isSync, setIsSync] = useState(false);
-  const [flightRecordsSyncTitle, setFlightRecordsSyncTitle] = useState('Flight records')
-  const [airportsUpdateTitle, setAirportsUpdateTitle] = useState('Airports');
+  const [flightsLabel, setFlightsLabel] = useState('Flight records')
+  const [airportsLabel, setAirportsLabel] = useState('Airports');
+  const [licensesLabel, setLicensesLabel] = useState('Lisences');
 
   const loadData = async () => {
     const { value } = await Preferences.get({ key: SETTINGS_KEY });
@@ -46,11 +47,13 @@ const Settings: React.FC = () => {
     const db = new DBModel();
     await db.initDBConnection();
 
-    const frCount = await db.getFlightRecordsCount();
+    const flightrecords = await db.getFlightRecordsCount();
     const airports = await db.getAirportsCount();
+    const licenses = await db.getLicensesCount();
 
-    setFlightRecordsSyncTitle(`Flight records (${frCount} records)`);
-    setAirportsUpdateTitle(`Airports (${airports} records)`);
+    setFlightsLabel(`Flight records (${flightrecords} records)`);
+    setAirportsLabel(`Airports (${airports} records)`);
+    setLicensesLabel(`Licenses (${licenses} records)`);
   }
 
   /**
@@ -83,6 +86,9 @@ const Settings: React.FC = () => {
     setIsSync(false);
   };
 
+  /**
+   * Updates the airports database
+   */
   const AirportsDBUpdate = async () => {
     const sync = new Sync(settings);
     setIsSync(true);
@@ -94,8 +100,25 @@ const Settings: React.FC = () => {
     await Toast.show({ text: `Airports database updated` });
 
     setIsSync(false);
-
   };
+
+  const LicensingUpdate = async () => {
+    const sync = new Sync(settings);
+    setIsSync(true);
+
+    await Toast.show({ text: `Updating licenses...` });
+
+    await Toast.show({ text: `Synchronizing deleted records...` });
+    await sync.syncDeletedItems();
+
+    await Toast.show({ text: `Synchronizing licenses...` });
+    await sync.updateLicenses();
+
+    await getRecordsCount();
+    await Toast.show({ text: `Licenses updated` });
+
+    setIsSync(false);
+  }
 
   const AuthCheckClicked = async (e: any) => {
     setSettings({ ...settings, auth: e.target.checked });
@@ -161,12 +184,17 @@ const Settings: React.FC = () => {
             </IonItemDivider>
             <IonItem>
               <IonIcon icon={airplane} slot="start"></IonIcon>
-              <IonLabel>{flightRecordsSyncTitle}</IonLabel>
+              <IonLabel>{flightsLabel}</IonLabel>
               <IonButton onClick={FlightRecordsUpdate} disabled={isSync}>Update</IonButton>
             </IonItem>
             <IonItem>
+              <IonIcon icon={documents} slot="start"></IonIcon>
+              <IonLabel>{licensesLabel}</IonLabel>
+              <IonButton onClick={LicensingUpdate} disabled={isSync}>Update</IonButton>
+            </IonItem>
+            <IonItem>
               <IonIcon icon={reorderFour} slot="start"></IonIcon>
-              <IonLabel>{airportsUpdateTitle}</IonLabel>
+              <IonLabel>{airportsLabel}</IonLabel>
               <IonButton onClick={AirportsDBUpdate} disabled={isSync}>Update</IonButton>
             </IonItem>
           </IonItemGroup>

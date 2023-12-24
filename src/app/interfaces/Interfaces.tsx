@@ -113,6 +113,23 @@ export interface Attachment {
     record_id: string;
 }
 
+/**
+ * Represents a license
+ */
+export interface License {
+    category: string;
+    document: string;
+    document_name: string;
+    issued: string;
+    name: string;
+    number: string;
+    remarks: string;
+    update_time: number;
+    uuid: string;
+    valid_from: string;
+    valid_until: string;
+}
+
 
 // https://app.quicktype.io/
 export class Convert {
@@ -190,6 +207,16 @@ export class Convert {
 
     public static attachmentToJson(value: Attachment): string {
         return JSON.stringify(uncast(value, r("Attachment")), null, 2);
+    }
+
+    public static toLicense(json: string): License {
+        const pjson = JSON.parse(json);
+        if (pjson.document === null) { pjson.document = ''; }
+        return cast(pjson, r("License"));
+    }
+
+    public static licenseToJson(value: License): string {
+        return JSON.stringify(uncast(value, r("License")), null, 2);
     }
 }
 
@@ -394,5 +421,18 @@ const typeMap: any = {
         { json: "document_name", js: "document_name", typ: "" },
         { json: "record_id", js: "record_id", typ: "" },
         { json: "uuid", js: "uuid", typ: "" },
+    ], false),
+    "License": o([
+        { json: "category", js: "category", typ: "" },
+        { json: "document", js: "document", typ: "" },
+        { json: "document_name", js: "document_name", typ: "" },
+        { json: "issued", js: "issued", typ: "" },
+        { json: "name", js: "name", typ: "" },
+        { json: "number", js: "number", typ: "" },
+        { json: "remarks", js: "remarks", typ: "" },
+        { json: "update_time", js: "update_time", typ: 0 },
+        { json: "uuid", js: "uuid", typ: "" },
+        { json: "valid_from", js: "valid_from", typ: "" },
+        { json: "valid_until", js: "valid_until", typ: "" },
     ], false),
 };
