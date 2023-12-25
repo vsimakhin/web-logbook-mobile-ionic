@@ -36,6 +36,16 @@ const LicenseRecord: React.FC = () => {
         const db = new DBModel();
         await db.initDBConnection();
 
+        if (license.name === '') {
+            Toast.show({ text: 'Name is required' });
+            return;
+        }
+
+        if (license.category === '') {
+            Toast.show({ text: 'Category is required' });
+            return;
+        }
+
         license.update_time = getTimestamp();
 
         if (license.uuid === NEW_RECORD) {
@@ -101,7 +111,8 @@ const LicenseRecord: React.FC = () => {
                 source: CameraSource.Camera,
             });
 
-            setLicense({ ...license, document_name: `${license.name}.${image.format}`, document: image.base64String! });
+            const filename = license.name && license.name || 'license';
+            setLicense({ ...license, document_name: `${filename}.${image.format}`, document: image.base64String! });
         } catch (err: any) {
             Toast.show({ text: `Cannot attach photo ${err.message}` });
         }

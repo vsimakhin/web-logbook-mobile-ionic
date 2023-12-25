@@ -90,7 +90,6 @@ export class Sync {
             const index = localFlightRecords.findIndex(f => f.uuid === fr.uuid);
             if (index === -1) {
                 // insert flight record into the local database
-                console.log("new", fr)
                 const res = await db.insertFlightRecord(fr);
                 if (res instanceof Error) {
                     return;
@@ -100,7 +99,6 @@ export class Sync {
                 const localFR = localFlightRecords[index];
                 if (localFR.update_time < fr.update_time) {
                     // update flight record in the local database
-                    console.log("update", fr)
                     const res = await db.updateFlightRecord(fr);
                     if (res instanceof Error) {
                         return;
@@ -248,7 +246,6 @@ export class Sync {
         // upload flight records to the main app
         lics = await db.getLicenses();
         const payload = { 'licenses': lics };
-        console.log(payload)
         if (lics.length !== 0) {
             const res = await this.post(this.getURL(this.SYNC_LICENSES), payload);
         }

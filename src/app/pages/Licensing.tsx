@@ -1,11 +1,13 @@
-import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar, useIonViewDidEnter } from '@ionic/react';
+import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonTitle, IonToolbar, useIonViewDidEnter } from '@ionic/react';
 import { useState } from 'react';
-import { License } from '../interfaces/Interfaces';
+import { License, NEW_RECORD, emptyLicense } from '../interfaces/Interfaces';
 import useWindowDimensions from '../modules/helpers/WindowDimensions';
 import { DBModel } from '../modules/db/DBModel';
 import { Toast } from '@capacitor/toast';
 import { useHistory } from 'react-router';
 import DataTable, { TableColumn } from 'react-data-table-component';
+import { add } from 'ionicons/icons';
+import { getCurrentDate } from '../modules/helpers/Helpers';
 
 
 const Licensing: React.FC = () => {
@@ -68,10 +70,12 @@ const Licensing: React.FC = () => {
      * Navigates to the '/flight' route with a new flight record.
      */
     const onNewClicked = async () => {
-        // let fr = emptyFlightRecord();
-        // fr.uuid = NEW_FLIGHTRECORD;
-        // fr.date = getCurrentDate();
-        // history.push('/flight', { fr: fr });
+        let license = emptyLicense();
+        license.uuid = NEW_RECORD;
+        license.issued = getCurrentDate();
+        license.valid_from = getCurrentDate();
+
+        history.push('/license', { lic: license });
     }
 
     /**
@@ -93,6 +97,11 @@ const Licensing: React.FC = () => {
             <IonHeader>
                 <IonToolbar>
                     <IonTitle>Licensing & Endorsements</IonTitle>
+                    <IonButtons slot="secondary">
+                        <IonButton onClick={onNewClicked}>
+                            <IonIcon slot="icon-only" icon={add}></IonIcon>
+                        </IonButton>
+                    </IonButtons>
                 </IonToolbar>
             </IonHeader>
             <IonContent fullscreen>
