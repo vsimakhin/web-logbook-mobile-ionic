@@ -7,7 +7,7 @@ import {
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { useEffect, useState } from 'react';
 import { useHistory, useLocation } from 'react-router';
-import { Attachment, FlightRecord, NEW_FLIGHTRECORD, emptyFlightRecord } from '../interfaces/Interfaces';
+import { Attachment, FlightRecord, NEW_RECORD, emptyFlightRecord } from '../interfaces/Interfaces';
 import { arrowUndo, camera, checkmark, close, document, ellipsisVertical, image, trash } from 'ionicons/icons';
 import { DBModel } from '../modules/db/DBModel';
 import { Toast } from '@capacitor/toast';
@@ -20,7 +20,7 @@ import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 // Import Swiper styles
 import 'swiper/css';
 
-import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
+import { Directory, Filesystem } from '@capacitor/filesystem';
 import { FileOpener } from '@capawesome-team/capacitor-file-opener';
 
 const Flight: React.FC = () => {
@@ -72,7 +72,7 @@ const Flight: React.FC = () => {
     const db = new DBModel();
     await db.initDBConnection();
 
-    if (fr.uuid === NEW_FLIGHTRECORD) {
+    if (fr.uuid === NEW_RECORD) {
       const uuid = uuidv4();
       fr.uuid = uuid;
       setFlightRecord({ ...fr, uuid: fr.uuid })
@@ -338,7 +338,7 @@ const Flight: React.FC = () => {
             <IonActionSheet
               trigger="flight-record-action-sheet"
               header="Flight Record Actions"
-              buttons={(fr.uuid !== NEW_FLIGHTRECORD) && [
+              buttons={(fr.uuid !== NEW_RECORD) && [
                 { text: 'Save', icon: checkmark, role: 'selected', handler: saveFlightRecord },
                 { text: 'Attach File', icon: document, handler: addFileAttachment },
                 { text: 'Attach Image', icon: image, handler: addImageAttachment },
@@ -569,7 +569,7 @@ const Flight: React.FC = () => {
             </IonGrid>
           </SwiperSlide>
 
-          {(fr.uuid !== NEW_FLIGHTRECORD) &&
+          {(fr.uuid !== NEW_RECORD) &&
             <>
               <SwiperSlide>
                 <IonList>

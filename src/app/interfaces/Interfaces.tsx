@@ -1,4 +1,4 @@
-export const NEW_FLIGHTRECORD = "NEW_FLIGHTRECORD"
+export const NEW_RECORD = "NEW_RECORD"
 
 /**
  * Represents an application settings
@@ -130,6 +130,23 @@ export interface License {
     valid_until: string;
 }
 
+export function emptyLicense(): License {
+    let l: License = {
+        category: '',
+        document: '',
+        document_name: '',
+        issued: '',
+        name: '',
+        number: '',
+        remarks: '',
+        update_time: 0,
+        uuid: '',
+        valid_from: '',
+        valid_until: '',
+    };
+
+    return l;
+}
 
 // https://app.quicktype.io/
 export class Convert {

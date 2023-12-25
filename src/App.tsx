@@ -39,6 +39,7 @@ import Stats from './app/pages/Stats';
 import Settings from './app/pages/Settings';
 import Flight from './app/pages/Flight';
 import Licensing from './app/pages/Licensing';
+import LicenseRecord from './app/pages/LicenseRecord';
 
 setupIonicReact();
 
@@ -70,6 +71,9 @@ const App: React.FC = () => {
             </Route>
             <Route exact path="/licensing">
               <Licensing />
+            </Route>
+            <Route exact path="/license">
+              <LicenseRecord />
             </Route>
           </IonRouterOutlet>
 

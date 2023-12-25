@@ -1,7 +1,7 @@
 import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonTitle, IonToolbar, useIonViewDidEnter } from '@ionic/react';
 import { useState } from 'react';
 import { DBModel } from '../modules/db/DBModel';
-import { FlightRecord, NEW_FLIGHTRECORD, emptyFlightRecord } from '../interfaces/Interfaces';
+import { FlightRecord, NEW_RECORD, emptyFlightRecord } from '../interfaces/Interfaces';
 import { Toast } from '@capacitor/toast';
 import DataTable, { TableColumn } from 'react-data-table-component';
 import useWindowDimensions from '../modules/helpers/WindowDimensions';
@@ -70,7 +70,7 @@ const FlightRecords: React.FC = () => {
    */
   const onNewClicked = async () => {
     let fr = emptyFlightRecord();
-    fr.uuid = NEW_FLIGHTRECORD;
+    fr.uuid = NEW_RECORD;
     fr.date = getCurrentDate();
     history.push('/flight', { fr: fr });
   }

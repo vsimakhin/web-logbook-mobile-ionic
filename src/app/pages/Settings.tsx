@@ -106,8 +106,6 @@ const Settings: React.FC = () => {
     const sync = new Sync(settings);
     setIsSync(true);
 
-    await Toast.show({ text: `Updating licenses...` });
-
     await Toast.show({ text: `Synchronizing deleted records...` });
     await sync.syncDeletedItems();
 

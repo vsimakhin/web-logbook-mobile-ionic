@@ -60,7 +60,7 @@ const Licensing: React.FC = () => {
      * @param event - The click event.
      */
     const onRowClicked = async (row: License, event: React.MouseEvent<Element, MouseEvent>) => {
-        // history.push('/flight', { fr: row });
+        history.push('/license', { lic: row });
     }
 
     /**

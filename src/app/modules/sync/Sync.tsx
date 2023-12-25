@@ -248,6 +248,7 @@ export class Sync {
         // upload flight records to the main app
         lics = await db.getLicenses();
         const payload = { 'licenses': lics };
+        console.log(payload)
         if (lics.length !== 0) {
             const res = await this.post(this.getURL(this.SYNC_LICENSES), payload);
         }
